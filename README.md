@@ -2,6 +2,33 @@
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+## Moduł Notatnik
+
+Notatnik działa offline i zapisuje dane lokalnie na urządzeniu w SQLite (`expo-sqlite`).
+Tabela `notes` jest tworzona automatycznie przy pierwszym użyciu modułu, razem z indeksami po `updatedAt` i `isImportant`.
+
+Główne ścieżki:
+
+- `/notatki` w zakładkach pokazuje listę notatek, filtry, wyszukiwarkę i sortowanie.
+- `/notes/new` otwiera formularz dodawania notatki.
+- `/notes/[id]` pokazuje szczegóły notatki.
+- `/notes/[id]/edit` otwiera edycję z ostrzeżeniem o niezapisanych zmianach.
+
+Dashboard ma szybkie przejście do Notatnika, akcję „Nowa notatka” oraz licznik ważnych notatek.
+
+Przypadki kontrolne:
+
+- dodanie notatki z samą treścią,
+- dodanie notatki z tytułem i treścią,
+- próba zapisania pustej notatki,
+- oznaczenie notatki jako ważnej,
+- filtrowanie ważnych notatek,
+- wyszukiwanie po tytule i treści,
+- edycja notatki,
+- usunięcie notatki po potwierdzeniu,
+- anulowanie usuwania notatki,
+- wyjście z edycji z niezapisanymi zmianami.
+
 ## Get started
 
 1. Install dependencies

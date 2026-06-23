@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -10,12 +11,17 @@ import {
   SectionTitle,
 } from '@/components/lider-ui';
 
-const quickActions: { label: string; icon: LiderIconName; color: string }[] = [
+const quickActions: {
+  label: string;
+  icon: LiderIconName;
+  color: string;
+  route?: '/(tabs)/notatki' | '/notes/new';
+}[] = [
   { label: 'Place', icon: 'cash-outline', color: liderColors.blue },
   { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green },
   { label: 'Grafik', icon: 'calendar-outline', color: '#a778ff' },
-  { label: 'Notatnik', icon: 'reader-outline', color: liderColors.amber },
-  { label: 'Stwórz raport', icon: 'document-text-outline', color: '#ff8a3d' },
+  { label: 'Notatnik', icon: 'reader-outline', color: liderColors.amber, route: '/(tabs)/notatki' },
+  { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
 ];
 
 const recentBb = [
@@ -29,12 +35,21 @@ const events = [
 ];
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <AppScreen title="LiderApp" subtitle="Rafineria Jasło - Sadza" rightIcon="notifications-outline">
       <SectionTitle>Szybkie akcje</SectionTitle>
       <View style={styles.quickGrid}>
         {quickActions.map((action) => (
-          <Pressable key={action.label} style={styles.quickCard}>
+          <Pressable
+            key={action.label}
+            onPress={() => {
+              if (action.route) {
+                router.push(action.route);
+              }
+            }}
+            style={styles.quickCard}>
             <Ionicons name={action.icon} size={28} color={action.color} />
             <Text style={styles.quickLabel}>{action.label}</Text>
           </Pressable>
@@ -46,7 +61,7 @@ export default function HomeScreen() {
       <SectionTitle>Podsumowanie</SectionTitle>
       <View style={styles.summaryGrid}>
         <MetricCard label="Aktywne BB" value="128" color={liderColors.blue} />
-        <MetricCard label="BB w archiwum" value="16" color="#c7ccd4" />
+        <MetricCard label="Zarchiwizowane BB" value="16" color={liderColors.amber} />
       </View>
 
       <EmptySpacer height={18} />

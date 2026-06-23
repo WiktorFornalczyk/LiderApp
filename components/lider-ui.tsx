@@ -6,6 +6,7 @@ import {
   StyleProp,
   StyleSheet,
   Text,
+  useColorScheme,
   View,
   ViewStyle,
 } from 'react-native';
@@ -28,12 +29,30 @@ export const liderColors = {
   red: '#ff5c42',
 };
 
+const liderLightColors = {
+  bg: '#f4f7fb',
+  surface: '#ffffff',
+  surfaceAlt: '#edf2f7',
+  surfaceSoft: '#eef3f8',
+  border: '#c8d2df',
+  borderSoft: '#dbe3ec',
+  text: '#111827',
+  muted: '#5d6977',
+  dim: '#7a8795',
+  blue: liderColors.blue,
+  green: liderColors.green,
+  amber: liderColors.amber,
+  violet: liderColors.violet,
+  red: liderColors.red,
+};
+
 export type LiderIconName = ComponentProps<typeof Ionicons>['name'];
 
 type AppScreenProps = PropsWithChildren<{
   title: string;
   subtitle?: string;
   leftIcon?: LiderIconName;
+  onLeftPress?: () => void;
   rightIcon?: LiderIconName;
   rightSlot?: ReactNode;
   wide?: boolean;
@@ -43,30 +62,25 @@ export function AppScreen({
   title,
   subtitle,
   leftIcon = 'menu-outline',
+  onLeftPress,
   rightIcon,
   rightSlot,
   wide = false,
   children,
 }: AppScreenProps) {
-  return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-      <View style={styles.phoneFrame}>
-        <View style={styles.statusBar}>
-          <Text style={styles.statusText}>09:41</Text>
-          <View style={styles.statusIcons}>
-            <Ionicons name="cellular" size={13} color={liderColors.text} />
-            <Ionicons name="wifi" size={13} color={liderColors.text} />
-            <Ionicons name="battery-full" size={16} color={liderColors.text} />
-          </View>
-        </View>
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === 'light' ? liderLightColors : liderColors;
 
-        <View style={styles.header}>
-          <IconButton name={leftIcon} />
+  return (
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <View style={[styles.phoneFrame, { backgroundColor: colors.bg }]}>
+        <View style={[styles.header, { borderBottomColor: colors.borderSoft }]}>
+          <IconButton name={leftIcon} onPress={onLeftPress} color={colors.text} />
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
+            {subtitle ? <Text style={[styles.headerSubtitle, { color: colors.dim }]}>{subtitle}</Text> : null}
           </View>
-          {rightSlot ?? (rightIcon ? <IconButton name={rightIcon} /> : <View style={styles.iconSpacer} />)}
+          {rightSlot ?? (rightIcon ? <IconButton name={rightIcon} color={colors.text} /> : <View style={styles.iconSpacer} />)}
         </View>
 
         <ScrollView
@@ -79,10 +93,20 @@ export function AppScreen({
   );
 }
 
-export function IconButton({ name, accent }: { name: LiderIconName; accent?: boolean }) {
+export function IconButton({
+  name,
+  accent,
+  color,
+  onPress,
+}: {
+  name: LiderIconName;
+  accent?: boolean;
+  color?: string;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable style={styles.iconButton}>
-      <Ionicons name={name} size={22} color={accent ? liderColors.blue : liderColors.text} />
+    <Pressable onPress={onPress} style={styles.iconButton}>
+      <Ionicons name={name} size={22} color={accent ? liderColors.blue : color ?? liderColors.text} />
       {name === 'notifications-outline' ? <View style={styles.dot} /> : null}
     </Pressable>
   );
@@ -146,23 +170,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     backgroundColor: liderColors.bg,
-  },
-  statusBar: {
-    height: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-  },
-  statusText: {
-    color: liderColors.text,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  statusIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
   },
   header: {
     height: 58,
