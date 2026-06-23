@@ -1,35 +1,69 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { liderColors, LiderIconName } from '@/components/lider-ui';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: liderColors.blue,
+        tabBarInactiveTintColor: '#a0a8b1',
+        tabBarStyle: {
+          height: 64,
+          paddingTop: 7,
+          paddingBottom: 8,
+          backgroundColor: '#0b1118',
+          borderTopColor: liderColors.borderSoft,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <TabIcon name="home-outline" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="bb"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'BB',
+          tabBarIcon: ({ color }) => <TabIcon name="briefcase-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="grafik"
+        options={{
+          title: 'Grafik',
+          tabBarIcon: ({ color }) => <TabIcon name="calendar-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notatki"
+        options={{
+          title: 'Notatki',
+          tabBarIcon: ({ color }) => <TabIcon name="document-text-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="wiecej"
+        options={{
+          title: 'Więcej',
+          tabBarIcon: ({ color }) => <TabIcon name="ellipsis-horizontal" color={color} />,
         }}
       />
     </Tabs>
   );
+}
+
+function TabIcon({ name, color }: { name: LiderIconName; color: string }) {
+  return <Ionicons name={name} size={22} color={color} />;
 }
