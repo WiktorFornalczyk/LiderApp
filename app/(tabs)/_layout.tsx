@@ -1,20 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { liderColors, LiderIconName } from '@/components/lider-ui';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: liderColors.blue,
         tabBarInactiveTintColor: '#a0a8b1',
         tabBarStyle: {
-          height: 64,
+          height: 56 + bottomInset,
           paddingTop: 7,
-          paddingBottom: 8,
+          paddingBottom: bottomInset,
           backgroundColor: '#0b1118',
           borderTopColor: liderColors.borderSoft,
         },

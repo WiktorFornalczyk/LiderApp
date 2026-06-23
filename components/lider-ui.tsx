@@ -49,7 +49,7 @@ export function AppScreen({
   children,
 }: AppScreenProps) {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <View style={styles.phoneFrame}>
         <View style={styles.statusBar}>
           <Text style={styles.statusText}>09:41</Text>
