@@ -39,7 +39,13 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "LiderApp używa aparatu do zrobienia zdjęcia etykiety lub dokumentu BB przed lokalnym OCR."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

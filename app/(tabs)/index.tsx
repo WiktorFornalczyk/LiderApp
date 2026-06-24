@@ -15,10 +15,11 @@ const quickActions: {
   label: string;
   icon: LiderIconName;
   color: string;
-  route?: '/(tabs)/notatki' | '/notes/new' | '/(tabs)/grafik';
+  route?: string;
 }[] = [
-  { label: 'Place', icon: 'cash-outline', color: liderColors.blue },
-  { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green },
+  { label: 'Place', icon: 'cash-outline', color: liderColors.blue, route: '/bb/yards' },
+  { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green, route: '/bb/new' },
+  { label: 'Zrób zdjęcie BB', icon: 'camera-outline', color: '#5eead4', route: '/bb/photo' },
   { label: 'Grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
   { label: 'Notatnik', icon: 'reader-outline', color: liderColors.amber, route: '/(tabs)/notatki' },
   { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
@@ -46,7 +47,7 @@ export default function HomeScreen() {
             key={action.label}
             onPress={() => {
               if (action.route) {
-                router.push(action.route);
+                router.push(action.route as never);
               }
             }}
             style={styles.quickCard}>

@@ -122,3 +122,68 @@ Przypadki kontrolne:
 - eksport grafiku do DOCX,
 - automatyczne usunięcie grafików starszych niż 4 tygodnie bez usuwania pracowników,
 - `getScheduleEntriesForDates(dates)` zwraca dane po konkretnych datach i nie miesza tygodni.
+
+## Moduł BB i Place
+
+Moduł BB i Place działa offline i zapisuje dane w SQLite (`expo-sqlite`) w bazie `liderapp.db`. Kod modułu znajduje się w `src/features/bb` i jest podzielony na komponenty, ekrany, repozytoria, serwisy, typy, walidację, migrację SQLite oraz helpery zakresów BB.
+
+Główne wejścia:
+
+- `/bb` w zakładkach pokazuje aktywne BB, place, archiwum i import/eksport.
+- `/bb/new` otwiera szybkie dodawanie BB.
+- `/bb/photo` otwiera przepływ dodawania BB przez wykonanie pojedynczego zdjęcia i lokalny OCR.
+
+Tabele SQLite:
+
+- `yards` przechowuje place.
+- `bb_records` przechowuje aktywne, archiwalne i podzielone zapisy BB.
+- `app_settings` przechowuje m.in. `lastBbArchiveCleanupAt`, ostatni plac, ostatnią linię i lokalną kopię przed importem zastępującym.
+
+Archiwum BB:
+
+- archiwizacja ustawia `status = archived` i `archivedAt`,
+- rekord można przywrócić przez 7 dni,
+- czyszczenie archiwum usuwa trwale rekordy starsze niż 7 dni i działa maksymalnie raz dziennie,
+- przed ręcznym trwałym usunięciem aplikacja pokazuje dodatkowe potwierdzenie.
+
+Dzielenie partii BB:
+
+- `splitBbRecord(recordId, splitAfterNumber)` wykonuje całość w transakcji SQLite,
+- oryginał dostaje `status = split` i `splitAt`,
+- powstają dwa aktywne rekordy z `splitFromId` oraz zakresami, np. `BB 001-010` i `BB 011-020`,
+- rekordy `split` nie są widoczne na głównej liście aktywnych BB.
+
+Import i eksport JSON:
+
+- eksport tworzy strukturę `schemaVersion: 1`, `appName: LiderApp`, `dataType: bb_backup`, `yards` i `bbRecords`,
+- domyślnie eksportowane są tylko aktywne BB oraz place potrzebne do przypisania BB,
+- opcjonalnie można eksportować archiwum,
+- import obsługuje tryb połączenia danych oraz zastąpienia danych BB,
+- przed zastąpieniem danych aplikacja tworzy lokalną kopię obecnych danych BB.
+
+Dodawanie BB ze zdjęcia i OCR:
+
+- zdjęcie jest wykonywane przez `expo-camera` po naciśnięciu przycisku `Zrób zdjęcie`,
+- aplikacja nie skanuje obrazu stale w trybie live,
+- lokalny OCR jest wykonywany przez Google ML Kit Text Recognition (`@react-native-ml-kit/text-recognition`) dopiero po wykonaniu zdjęcia,
+- aplikacja nie wysyła zdjęć do zewnętrznego API,
+- po OCR użytkownik widzi zdjęcie, pełny odczytany tekst oraz proponowane wartości,
+- parser rozpoznaje zapis w stylu `L-I N339 P565499 BB11-23, plac 3`: `L-I` jako linia, `N339` jako rodzaj sadzy, `P565499` jako numer partii, `BB11-23` jako zakres i `plac 3` jako dopasowanie do istniejącego placu,
+- wynik OCR nigdy nie jest zapisywany automatycznie: użytkownik musi potwierdzić albo poprawić dane przed przejściem do zapisu BB,
+- ML Kit wymaga natywnego buildu/Expo Dev Client po instalacji paczki.
+
+Przypadki kontrolne:
+
+- dodanie, edycja i usunięcie placu,
+- blokada usunięcia placu z aktywnymi BB,
+- dodanie BB z poprawnym zakresem, pustą paletą i domyślnymi wartościami `strecz = nie`, `kapturownica = nie`,
+- walidacja numeru partii, rodzaju sadzy, placu, linii i zakresu BB,
+- wyszukiwanie po partii, sadzy, placu, zakresie i linii,
+- filtrowanie po placu, linii, palecie, strechu i kapturownicy,
+- ostrzeżenia dla duplikatów oraz nachodzących zakresów tej samej partii,
+- archiwizacja, przywrócenie i trwałe usunięcie BB,
+- automatyczne czyszczenie archiwum po 7 dniach,
+- podział `BB 001-020` na `BB 001-010` i `BB 011-020`,
+- eksport aktywnych BB do JSON,
+- import JSON w trybie połączenia i zastąpienia,
+- OCR z ręcznym potwierdzeniem danych.
