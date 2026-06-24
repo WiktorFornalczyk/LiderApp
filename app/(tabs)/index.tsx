@@ -15,11 +15,11 @@ const quickActions: {
   label: string;
   icon: LiderIconName;
   color: string;
-  route?: '/(tabs)/notatki' | '/notes/new';
+  route?: '/(tabs)/notatki' | '/notes/new' | '/(tabs)/grafik';
 }[] = [
   { label: 'Place', icon: 'cash-outline', color: liderColors.blue },
   { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green },
-  { label: 'Grafik', icon: 'calendar-outline', color: '#a778ff' },
+  { label: 'Grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
   { label: 'Notatnik', icon: 'reader-outline', color: liderColors.amber, route: '/(tabs)/notatki' },
   { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
 ];
