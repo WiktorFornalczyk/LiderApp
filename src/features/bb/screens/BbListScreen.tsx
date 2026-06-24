@@ -15,20 +15,17 @@ import * as yardService from '../yards/services/yardService';
 import { YardDetailsScreen } from '../yards/screens/YardDetailsScreen';
 import { YardEditScreen } from '../yards/screens/YardEditScreen';
 import { YardListScreen } from '../yards/screens/YardListScreen';
-import { BbArchiveScreen } from './BbArchiveScreen';
 import { BbCreateScreen } from './BbCreateScreen';
 import { BbDetailsScreen } from './BbDetailsScreen';
 import { BbEditScreen } from './BbEditScreen';
-import { BbImportExportScreen } from './BbImportExportScreen';
 import { BbPhotoAddScreen } from './BbPhotoAddScreen';
 
-type ScreenMode = 'list' | 'yards' | 'archive' | 'import' | 'create' | 'edit' | 'details' | 'yardDetails' | 'yardEdit' | 'photo';
+type ScreenMode = 'list' | 'yards' | 'create' | 'edit' | 'details' | 'yardDetails' | 'yardEdit' | 'photo';
 
 export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMode }) {
   const [mode, setMode] = useState<ScreenMode>(initialMode);
   const [listMode, setListMode] = useState<BbListMode>('active');
   const [records, setRecords] = useState<BbRecordWithYard[]>([]);
-  const [archivedRecords, setArchivedRecords] = useState<BbRecordWithYard[]>([]);
   const [yards, setYards] = useState<YardWithStats[]>([]);
   const [carbonTypes, setCarbonTypes] = useState<string[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<BbRecordWithYard | null>(null);
@@ -46,14 +43,12 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
       setError(null);
       setIsLoading(true);
       await bbArchiveService.cleanupExpiredBbArchive();
-      const [nextRecords, nextArchived, nextYards, nextCarbonTypes] = await Promise.all([
+      const [nextRecords, nextYards, nextCarbonTypes] = await Promise.all([
         bbService.getBbRecords({ query, filters, sortMode }),
-        bbService.getArchivedBbRecords(),
         yardService.getYards(),
         bbService.getRecentlyUsedCarbonTypes(),
       ]);
       setRecords(nextRecords);
-      setArchivedRecords(nextArchived);
       setYards(nextYards);
       setCarbonTypes(nextCarbonTypes);
     } catch {
@@ -100,8 +95,6 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
       <View style={styles.modeTabs}>
         <ModeTab label="BB" selected={mode === 'list'} onPress={() => setMode('list')} />
         <ModeTab label="Place" selected={mode === 'yards'} onPress={() => setMode('yards')} />
-        <ModeTab label="Archiwum" selected={mode === 'archive'} onPress={() => setMode('archive')} />
-        <ModeTab label="Import" selected={mode === 'import'} onPress={() => setMode('import')} />
       </View>
 
       {mode === 'create' ? (
@@ -160,10 +153,6 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
           onEdit={() => setMode('yardEdit')}
           onSelectBb={openRecord}
         />
-      ) : mode === 'archive' ? (
-        <BbArchiveScreen records={archivedRecords} onChanged={() => afterChanged('archive')} onSelect={openRecord} />
-      ) : mode === 'import' ? (
-        <BbImportExportScreen onImported={() => afterChanged('list')} />
       ) : mode === 'photo' ? (
         <BbPhotoAddScreen
           yards={yards}

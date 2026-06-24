@@ -9,10 +9,12 @@ export function BbArchiveScreen({
   records,
   onChanged,
   onSelect,
+  retentionDays,
 }: {
   records: BbRecordWithYard[];
   onChanged: () => void;
   onSelect: (record: BbRecordWithYard) => void;
+  retentionDays: number;
 }) {
   if (records.length === 0) {
     return (
@@ -28,6 +30,7 @@ export function BbArchiveScreen({
         <BbArchiveCard
           key={record.id}
           record={record}
+          retentionDays={retentionDays}
           onPress={() => onSelect(record)}
           onDelete={() =>
             Alert.alert(

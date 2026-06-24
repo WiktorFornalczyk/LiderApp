@@ -2,6 +2,8 @@ import { bbErrorMessages } from '../validation/bbValidation';
 import * as bbRepository from './bbRepository';
 
 const LAST_CLEANUP_KEY = 'lastBbArchiveCleanupAt';
+const RETENTION_DAYS_KEY = 'bbArchiveRetentionDays';
+const DEFAULT_RETENTION_DAYS = 7;
 const dayMs = 24 * 60 * 60 * 1000;
 
 function addDays(date: Date, days: number) {
@@ -41,13 +43,36 @@ export async function permanentlyDeleteBbRecord(id: string) {
   return bbRepository.permanentlyDeleteBbRecord(id);
 }
 
-export function getDaysUntilPermanentDelete(archivedAt: string | null) {
+function normalizeRetentionDays(value: string | null) {
+  const days = Number(value);
+
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    return DEFAULT_RETENTION_DAYS;
+  }
+
+  return days;
+}
+
+export async function getBbArchiveRetentionDays() {
+  return normalizeRetentionDays(await bbRepository.getSetting(RETENTION_DAYS_KEY));
+}
+
+export async function setBbArchiveRetentionDays(days: number) {
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    throw new Error('Podaj liczbę dni od 1 do 365.');
+  }
+
+  await bbRepository.setSetting(RETENTION_DAYS_KEY, String(days));
+  return days;
+}
+
+export function getDaysUntilPermanentDelete(archivedAt: string | null, retentionDays = DEFAULT_RETENTION_DAYS) {
   if (!archivedAt) {
     return 0;
   }
 
   const archivedTime = new Date(archivedAt).getTime();
-  const deleteTime = archivedTime + 7 * dayMs;
+  const deleteTime = archivedTime + retentionDays * dayMs;
   return Math.max(0, Math.ceil((deleteTime - Date.now()) / dayMs));
 }
 
@@ -60,7 +85,8 @@ export async function cleanupExpiredBbArchive() {
       return { deletedCount: 0, skipped: true, lastCleanupAt };
     }
 
-    const beforeDate = addDays(new Date(), -7).toISOString();
+    const retentionDays = await getBbArchiveRetentionDays();
+    const beforeDate = addDays(new Date(), -retentionDays).toISOString();
     const deletedCount = await bbRepository.permanentlyDeleteExpiredArchivedBbRecords(beforeDate);
     const cleanedAt = new Date().toISOString();
     await bbRepository.setSetting(LAST_CLEANUP_KEY, cleanedAt);

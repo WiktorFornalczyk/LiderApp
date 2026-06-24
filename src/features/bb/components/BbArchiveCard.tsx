@@ -10,11 +10,13 @@ export function BbArchiveCard({
   onRestore,
   onDelete,
   onPress,
+  retentionDays,
 }: {
   record: BbRecordWithYard;
   onRestore: () => void;
   onDelete: () => void;
   onPress: () => void;
+  retentionDays: number;
 }) {
   return (
     <Pressable onPress={onPress}>
@@ -23,7 +25,7 @@ export function BbArchiveCard({
           Partia {record.nrPartii} · {formatBbRange(record.bbOd, record.bbDo)}
         </Text>
         <Text style={styles.meta}>
-          {record.yard.name} · do automatycznego usunięcia: {getDaysUntilPermanentDelete(record.archivedAt)} dni
+          {record.yard.name} · do automatycznego usunięcia: {getDaysUntilPermanentDelete(record.archivedAt, retentionDays)} dni
         </Text>
         <View style={styles.actions}>
           <Pressable onPress={onRestore} style={styles.restoreButton}>
