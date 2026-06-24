@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppScreen,
@@ -10,33 +11,71 @@ import {
   LiderIconName,
   SectionTitle,
 } from '@/components/lider-ui';
+import * as bbService from '@/src/features/bb/services/bbService';
+import { BbRecordWithYard } from '@/src/features/bb/types/bbTypes';
+import { formatDateTime } from '@/src/features/bb/utils/bbFormatUtils';
+import { formatBbRange } from '@/src/features/bb/utils/bbRangeUtils';
+import * as scheduleService from '@/src/features/schedule/services/scheduleService';
+import { ScheduleWeek } from '@/src/features/schedule/types/scheduleTypes';
+import { formatDisplayDate } from '@/src/features/schedule/utils/dateRangeUtils';
 
 const quickActions: {
   label: string;
   icon: LiderIconName;
   color: string;
-  route?: string;
+  route: string;
 }[] = [
-  { label: 'Place', icon: 'cash-outline', color: liderColors.blue, route: '/bb/yards' },
   { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green, route: '/bb/new' },
-  { label: 'Zrób zdjęcie BB', icon: 'camera-outline', color: '#5eead4', route: '/bb/photo' },
-  { label: 'Grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
-  { label: 'Notatnik', icon: 'reader-outline', color: liderColors.amber, route: '/(tabs)/notatki' },
+  { label: 'Nowy grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
   { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
 ];
 
-const recentBb = [
-  { batch: '20240517', details: 'BB 001-025 • L-I • Plac Główny', time: 'Dzisiaj, 08:15', color: liderColors.amber },
-  { batch: '20240516', details: 'BB 101-125 • L-II • Plac 2', time: 'Wczoraj, 16:40', color: '#ff8a3d' },
-];
-
-const events = [
-  { title: 'Przegląd linii L-I', time: 'Dzisiaj, 14:00', color: liderColors.blue },
-  { title: 'Spotkanie BHP', time: 'Jutro, 08:00', color: liderColors.green },
-];
+type DashboardData = {
+  counts: {
+    active: number;
+    archived: number;
+    yards: number;
+  };
+  recentBb: BbRecordWithYard[];
+  schedule: {
+    currentWeek: ScheduleWeek | null;
+    activeEmployeesCount: number;
+    todayShiftSummary: { shiftNumber: number; peopleCount: number; hours: number }[];
+  };
+};
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      const [bbSummary, scheduleSummary] = await Promise.all([
+        bbService.getDashboardBbSummary(),
+        scheduleService.getDashboardScheduleSummary(),
+      ]);
+
+      setData({
+        counts: bbSummary.counts,
+        recentBb: bbSummary.recent,
+        schedule: scheduleSummary,
+      });
+    } catch {
+      setError('Nie udało się wczytać danych dashboardu.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard])
+  );
 
   return (
     <AppScreen title="LiderApp" subtitle="Rafineria Jasło - Sadza" rightIcon="notifications-outline">
@@ -45,11 +84,7 @@ export default function HomeScreen() {
         {quickActions.map((action) => (
           <Pressable
             key={action.label}
-            onPress={() => {
-              if (action.route) {
-                router.push(action.route as never);
-              }
-            }}
+            onPress={() => router.push(action.route as never)}
             style={styles.quickCard}>
             <Ionicons name={action.icon} size={28} color={action.color} />
             <Text style={styles.quickLabel}>{action.label}</Text>
@@ -59,44 +94,101 @@ export default function HomeScreen() {
 
       <EmptySpacer height={18} />
 
-      <SectionTitle>Podsumowanie</SectionTitle>
-      <View style={styles.summaryGrid}>
-        <MetricCard label="Aktywne BB" value="128" color={liderColors.blue} />
-        <MetricCard label="Zarchiwizowane BB" value="16" color={liderColors.amber} />
-      </View>
-
-      <EmptySpacer height={18} />
-
-      <SectionTitle>Ostatnio dodane BB</SectionTitle>
-      <Card>
-        {recentBb.map((item, index) => (
-          <View key={item.batch} style={[styles.listRow, index > 0 && styles.rowBorder]}>
-            <View style={[styles.marker, { backgroundColor: item.color }]} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>Partia: {item.batch}</Text>
-              <Text style={styles.rowSub}>{item.details}</Text>
-            </View>
-            <Text style={styles.rowTime}>{item.time}</Text>
+      {isLoading ? (
+        <StateCard message="Wczytywanie dashboardu..." loading />
+      ) : error ? (
+        <StateCard message={error} />
+      ) : data ? (
+        <>
+          <SectionTitle>Podsumowanie</SectionTitle>
+          <View style={styles.summaryGrid}>
+            <MetricCard label="Aktywne BB" value={String(data.counts.active)} color={liderColors.blue} />
+            <MetricCard label="Archiwum BB" value={String(data.counts.archived)} color={liderColors.amber} />
+            <MetricCard label="Place" value={String(data.counts.yards)} color={liderColors.green} />
           </View>
-        ))}
-      </Card>
 
-      <EmptySpacer height={18} />
+          <EmptySpacer height={18} />
 
-      <SectionTitle>Najbliższe wydarzenia</SectionTitle>
-      <Card>
-        {events.map((event, index) => (
-          <View key={event.title} style={[styles.listRow, index > 0 && styles.rowBorder]}>
-            <View style={[styles.marker, { backgroundColor: event.color }]} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{event.title}</Text>
-            </View>
-            <Text style={styles.rowTime}>{event.time}</Text>
-          </View>
-        ))}
-      </Card>
+          <SectionTitle>Ostatnio dodane BB</SectionTitle>
+          <Card>
+            {data.recentBb.length === 0 ? (
+              <EmptyRow title="Brak zapisów BB." />
+            ) : (
+              data.recentBb.map((item, index) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => router.push('/(tabs)/bb' as never)}
+                  style={[styles.listRow, index > 0 && styles.rowBorder]}>
+                  <View style={[styles.marker, { backgroundColor: item.linia === 'L-I' ? liderColors.amber : liderColors.blue }]} />
+                  <View style={styles.rowBody}>
+                    <Text style={styles.rowTitle}>Partia: {item.nrPartii}</Text>
+                    <Text style={styles.rowSub}>
+                      {formatBbRange(item.bbOd, item.bbDo)} · {item.linia} · {item.yard.name} · {item.rodzajSadzy}
+                    </Text>
+                  </View>
+                  <Text style={styles.rowTime}>{formatDateTime(item.createdAt)}</Text>
+                </Pressable>
+              ))
+            )}
+          </Card>
+
+          <EmptySpacer height={18} />
+
+          <SectionTitle>Najbliższe wydarzenia</SectionTitle>
+          <Card>
+            {buildScheduleEvents(data.schedule).map((event, index) => (
+              <Pressable
+                key={event.title}
+                onPress={() => router.push('/(tabs)/grafik' as never)}
+                style={[styles.listRow, index > 0 && styles.rowBorder]}>
+                <View style={[styles.marker, { backgroundColor: event.color }]} />
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle}>{event.title}</Text>
+                  <Text style={styles.rowSub}>{event.details}</Text>
+                </View>
+                <Text style={styles.rowTime}>{event.time}</Text>
+              </Pressable>
+            ))}
+          </Card>
+        </>
+      ) : null}
     </AppScreen>
   );
+}
+
+function buildScheduleEvents(schedule: DashboardData['schedule']) {
+  const currentWeek = schedule.currentWeek;
+  const totalPeopleToday = schedule.todayShiftSummary.reduce((sum, item) => sum + item.peopleCount, 0);
+  const totalHoursToday = schedule.todayShiftSummary.reduce((sum, item) => sum + item.hours, 0);
+  const shiftDetails =
+    schedule.todayShiftSummary.length > 0
+      ? schedule.todayShiftSummary
+          .map((item) => `Zmiana ${item.shiftNumber}: ${item.peopleCount} os. / ${item.hours}h`)
+          .join(' · ')
+      : 'Brak obsady zmian na dziś.';
+
+  return [
+    {
+      title: currentWeek ? 'Aktualny grafik' : 'Brak grafiku na dziś',
+      details: currentWeek
+        ? `${formatDisplayDate(currentWeek.startDate)} - ${formatDisplayDate(currentWeek.endDate)}`
+        : 'Utwórz nowy grafik dla bieżącego zakresu.',
+      time: currentWeek ? 'Teraz' : 'Do uzupełnienia',
+      color: currentWeek ? liderColors.blue : liderColors.amber,
+    },
+    {
+      title: 'Dzisiejsza obsada zmian',
+      details: `${shiftDetails} Razem: ${totalPeopleToday} os. / ${totalHoursToday}h`,
+      time: 'Dzisiaj',
+      color: liderColors.green,
+    },
+    {
+      title: 'Aktywni pracownicy',
+      details: `${schedule.activeEmployeesCount} osób dostępnych do grafiku.`,
+      time: 'Grafik',
+      color: liderColors.violet,
+    },
+  ];
 }
 
 function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
@@ -105,6 +197,23 @@ function MetricCard({ label, value, color }: { label: string; value: string; col
       <Text style={[styles.metricLabel, { color }]}>{label}</Text>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
     </Card>
+  );
+}
+
+function StateCard({ message, loading }: { message: string; loading?: boolean }) {
+  return (
+    <Card style={styles.stateCard}>
+      {loading ? <ActivityIndicator color={liderColors.blue} /> : null}
+      <Text style={styles.stateText}>{message}</Text>
+    </Card>
+  );
+}
+
+function EmptyRow({ title }: { title: string }) {
+  return (
+    <View style={styles.emptyRow}>
+      <Text style={styles.stateText}>{title}</Text>
+    </View>
   );
 }
 
@@ -134,10 +243,12 @@ const styles = StyleSheet.create({
   },
   summaryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   metricCard: {
     flex: 1,
+    minWidth: 128,
     minHeight: 82,
     justifyContent: 'center',
     padding: 14,
@@ -181,10 +292,33 @@ const styles = StyleSheet.create({
     color: liderColors.muted,
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 16,
   },
   rowTime: {
+    maxWidth: 94,
     color: liderColors.muted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
+    textAlign: 'right',
+  },
+  stateCard: {
+    minHeight: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 16,
+  },
+  stateText: {
+    color: liderColors.muted,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptyRow: {
+    minHeight: 82,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
 });
