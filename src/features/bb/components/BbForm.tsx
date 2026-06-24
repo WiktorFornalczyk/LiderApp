@@ -99,7 +99,7 @@ export function BbForm({
         </View>
         {errors.linia ? <Text style={styles.error}>{errors.linia}</Text> : null}
         <View style={styles.chips}>
-          <Choice selected={input.paleta === null} label="Bez palety" onPress={() => patch({ paleta: null })} />
+          <Choice selected={input.paleta === null} label="Brudne" onPress={() => patch({ paleta: null })} />
           <Choice selected={input.paleta === 'drewniana'} label="Drewniana" onPress={() => patch({ paleta: 'drewniana' })} />
           <Choice selected={input.paleta === 'plastikowa'} label="Plastikowa" onPress={() => patch({ paleta: 'plastikowa' })} />
         </View>
