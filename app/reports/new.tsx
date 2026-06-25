@@ -7,6 +7,13 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View 
 
 import { AppScreen, Card, EmptySpacer, liderColors, SectionTitle } from '@/components/lider-ui';
 import {
+  buildFormattedReport,
+  getYesterdayIsoDate,
+  ReportDraftEntry,
+  ReportShiftNumber,
+  ReportTemperatures,
+} from '@/src/features/reports/services/reportFormatter';
+import {
   formatParsedEntryForReport,
   ParsedReportEntry,
   parseReportOcrText,
@@ -15,15 +22,19 @@ import * as reportRepository from '@/src/features/reports/services/reportReposit
 
 type ReportMode = 'start' | 'camera' | 'preview' | 'manual';
 
+const shiftNumbers: ReportShiftNumber[] = [1, 2, 3];
+
 export default function NewReportScreen() {
   const router = useRouter();
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ReportMode>('start');
+  const [selectedShift, setSelectedShift] = useState<ReportShiftNumber>(1);
+  const [temperatures, setTemperatures] = useState<ReportTemperatures>({ 1: '', 2: '', 3: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [rawText, setRawText] = useState('');
   const [parsedEntries, setParsedEntries] = useState<ParsedReportEntry[]>([]);
-  const [draftEntries, setDraftEntries] = useState<string[]>([]);
+  const [draftEntries, setDraftEntries] = useState<ReportDraftEntry[]>([]);
   const [manualText, setManualText] = useState('');
 
   async function openCamera() {
@@ -75,30 +86,46 @@ export default function NewReportScreen() {
   }
 
   function addParsedEntriesToDraft() {
-    const nextEntries = parsedEntries.map(formatParsedEntryForReport).filter(Boolean);
-
-    if (nextEntries.length === 0) {
+    if (parsedEntries.length === 0) {
       Alert.alert('Brak wpisów', 'Popraw odczytany tekst albo wpisz raport ręcznie.');
       return;
     }
 
-    setDraftEntries((current) => [...current, ...nextEntries]);
+    setDraftEntries((current) => [
+      ...current,
+      ...parsedEntries.map((entry) => ({
+        id: `${entry.id}-${Date.now()}`,
+        shiftNumber: selectedShift,
+        parsedEntry: entry,
+      })),
+    ]);
     setRawText('');
     setParsedEntries([]);
     setMode('start');
   }
 
   function addManualEntry() {
-    const value = manualText.trim();
+    const nextParsedEntries = parseReportOcrText(manualText);
 
-    if (!value) {
+    if (nextParsedEntries.length === 0) {
       Alert.alert('Pusty wpis', 'Wpisz treść pozycji raportu.');
       return;
     }
 
-    setDraftEntries((current) => [...current, value]);
+    setDraftEntries((current) => [
+      ...current,
+      ...nextParsedEntries.map((entry) => ({
+        id: `${entry.id}-${Date.now()}`,
+        shiftNumber: selectedShift,
+        parsedEntry: entry,
+      })),
+    ]);
     setManualText('');
     setMode('start');
+  }
+
+  function updateTemperature(shiftNumber: ReportShiftNumber, value: string) {
+    setTemperatures((current) => ({ ...current, [shiftNumber]: value }));
   }
 
   async function saveReport() {
@@ -108,11 +135,13 @@ export default function NewReportScreen() {
     }
 
     try {
-      await reportRepository.createReport(draftEntries);
-      Alert.alert('Raport zapisany', `Zapisano ${draftEntries.length} pozycji raportu.`);
+      const formattedReport = await buildFormattedReport(draftEntries, temperatures);
+      const sourceEntries = draftEntries.map((entry) => `Zmiana ${entry.shiftNumber}: ${formatParsedEntryForReport(entry.parsedEntry)}`);
+      await reportRepository.createReport(formattedReport, sourceEntries);
+      Alert.alert('Raport zapisany', 'Wygenerowano raport z OCR i podsumowaniem godzin z grafiku.');
       router.replace('/reports' as never);
     } catch {
-      Alert.alert('Nie udało się zapisać raportu', 'Spróbuj ponownie.');
+      Alert.alert('Nie udało się zapisać raportu', 'Sprawdź grafik dla wczorajszego dnia i spróbuj ponownie.');
     }
   }
 
@@ -122,7 +151,7 @@ export default function NewReportScreen() {
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>Zrób zdjęcie kartki</Text>
           <Text style={styles.infoText}>
-            Ustaw całą treść raportu w kadrze. OCR uruchomi się dopiero po wykonaniu zdjęcia.
+            Odczyt z tego zdjęcia zostanie dopisany do: Zmiana {selectedShift}. Możesz zrobić kilka zdjęć do jednego raportu.
           </Text>
         </Card>
 
@@ -156,6 +185,11 @@ export default function NewReportScreen() {
   if (mode === 'preview') {
     return (
       <AppScreen title="Podgląd OCR" leftIcon="chevron-back" onLeftPress={() => setMode('camera')}>
+        <SectionTitle>Dodaj do zmiany</SectionTitle>
+        <ShiftSelector selectedShift={selectedShift} onSelect={setSelectedShift} />
+
+        <EmptySpacer height={12} />
+
         <SectionTitle>Odczytany tekst</SectionTitle>
         <TextInput
           multiline
@@ -192,7 +226,7 @@ export default function NewReportScreen() {
         <View style={styles.actions}>
           <Pressable onPress={addParsedEntriesToDraft} style={styles.primaryButton}>
             <Ionicons name="checkmark-circle-outline" size={20} color="#ffffff" />
-            <Text style={styles.primaryText}>Dodaj do raportu</Text>
+            <Text style={styles.primaryText}>Dodaj zdjęcie do raportu</Text>
           </Pressable>
           <Pressable onPress={() => setMode('camera')} style={styles.secondaryButton}>
             <Text style={styles.secondaryText}>Nowe zdjęcie</Text>
@@ -205,6 +239,11 @@ export default function NewReportScreen() {
   if (mode === 'manual') {
     return (
       <AppScreen title="Wpis ręczny" leftIcon="chevron-back" onLeftPress={() => setMode('start')}>
+        <SectionTitle>Dodaj do zmiany</SectionTitle>
+        <ShiftSelector selectedShift={selectedShift} onSelect={setSelectedShift} />
+
+        <EmptySpacer height={12} />
+
         <SectionTitle>Treść wpisu</SectionTitle>
         <TextInput
           multiline
@@ -231,24 +270,47 @@ export default function NewReportScreen() {
         <ActionCard
           icon="camera-outline"
           title="Zdjęcie raportu"
-          text="Zrób zdjęcie kartki i sprawdź odczytane wpisy przed dodaniem do raportu."
+          text="Dodaj kolejne zdjęcie OCR do tego samego raportu."
           onPress={openCamera}
         />
         <ActionCard
           icon="create-outline"
           title="Wpis ręczny"
-          text="Dodaj punkty raportu ręcznie, gdy nie chcesz korzystać z OCR."
+          text="Dodaj pozycję ręcznie do wybranej zmiany."
           onPress={() => setMode('manual')}
         />
       </View>
 
       <EmptySpacer height={18} />
 
+      <SectionTitle>Następny odczyt trafi do</SectionTitle>
+      <ShiftSelector selectedShift={selectedShift} onSelect={setSelectedShift} />
+
+      <EmptySpacer height={18} />
+
+      <SectionTitle>Temperatury</SectionTitle>
+      <Card style={styles.temperatureCard}>
+        {([1, 2] as const).map((shiftNumber) => (
+          <View key={shiftNumber} style={styles.temperatureRow}>
+            <Text style={styles.temperatureLabel}>Zmiana {shiftNumber}</Text>
+            <TextInput
+              keyboardType="numbers-and-punctuation"
+              onChangeText={(value) => updateTemperature(shiftNumber, value)}
+              placeholder="(...)"
+              placeholderTextColor={liderColors.dim}
+              style={styles.temperatureInput}
+              value={temperatures[shiftNumber]}
+            />
+          </View>
+        ))}
+      </Card>
+
+      <EmptySpacer height={18} />
+
       <Card style={styles.infoCard}>
-        <Text style={styles.infoTitle}>OCR raportu</Text>
+        <Text style={styles.infoTitle}>Format raportu</Text>
         <Text style={styles.infoText}>
-          Parser raportów rozpoznaje wpisy typu L-I N330 P564327 BB10-20 plac 3 oraz MW jako palety. Zapis wymaga
-          zatwierdzenia użytkownika.
+          Raport zostanie wygenerowany dla daty {getYesterdayIsoDate()} i uzupełni raport godzinowy z grafiku dla tego dnia.
         </Text>
       </Card>
 
@@ -257,22 +319,46 @@ export default function NewReportScreen() {
       <SectionTitle>Roboczy raport</SectionTitle>
       {draftEntries.length === 0 ? (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Brak pozycji raportu.</Text>
+          <Text style={styles.emptyText}>Brak pozycji raportu. Możesz dodać kilka zdjęć OCR przed zatwierdzeniem.</Text>
         </Card>
       ) : (
         <View style={styles.entryList}>
-          {draftEntries.map((entry, index) => (
-            <Card key={`${entry}-${index}`} style={styles.entryCard}>
-              <Text style={styles.entryTitle}>{entry}</Text>
+          {draftEntries.map((entry) => (
+            <Card key={entry.id} style={styles.entryCard}>
+              <Text style={styles.entryMeta}>Zmiana {entry.shiftNumber}</Text>
+              <Text style={styles.entryTitle}>{formatParsedEntryForReport(entry.parsedEntry)}</Text>
             </Card>
           ))}
           <Pressable onPress={saveReport} style={styles.primaryButton}>
             <Ionicons name="save-outline" size={20} color="#ffffff" />
-            <Text style={styles.primaryText}>Zatwierdź raport</Text>
+            <Text style={styles.primaryText}>Generuj i zapisz raport</Text>
           </Pressable>
         </View>
       )}
     </AppScreen>
+  );
+}
+
+function ShiftSelector({
+  selectedShift,
+  onSelect,
+}: {
+  selectedShift: ReportShiftNumber;
+  onSelect: (shiftNumber: ReportShiftNumber) => void;
+}) {
+  return (
+    <View style={styles.shiftSelector}>
+      {shiftNumbers.map((shiftNumber) => (
+        <Pressable
+          key={shiftNumber}
+          onPress={() => onSelect(shiftNumber)}
+          style={[styles.shiftButton, selectedShift === shiftNumber && styles.shiftButtonActive]}>
+          <Text style={[styles.shiftButtonText, selectedShift === shiftNumber && styles.shiftButtonTextActive]}>
+            Zmiana {shiftNumber}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
@@ -319,6 +405,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 18,
+  },
+  shiftSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  shiftButton: {
+    flex: 1,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.surfaceSoft,
+    paddingHorizontal: 8,
+  },
+  shiftButtonActive: {
+    borderColor: liderColors.blue,
+    backgroundColor: 'rgba(45,124,255,0.16)',
+  },
+  shiftButtonText: {
+    color: liderColors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  shiftButtonTextActive: {
+    color: liderColors.blue,
+  },
+  temperatureCard: {
+    gap: 10,
+    padding: 12,
+  },
+  temperatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  temperatureLabel: {
+    width: 78,
+    color: liderColors.text,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  temperatureInput: {
+    flex: 1,
+    minHeight: 42,
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.surfaceSoft,
+    color: liderColors.text,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '800',
   },
   infoCard: {
     gap: 8,
@@ -420,6 +560,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',
+    textAlign: 'center',
   },
   secondaryButton: {
     minHeight: 50,

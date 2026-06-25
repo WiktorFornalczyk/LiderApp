@@ -19,6 +19,8 @@ const emptyInput: BbInput = {
   uwagi: null,
 };
 
+const quickCarbonTypes = ['N326', 'N375', 'N339'];
+
 export function BbForm({
   yards,
   carbonTypes,
@@ -39,6 +41,20 @@ export function BbForm({
   const [input, setInput] = useState<BbInput>(() => buildInitialInput(record, initialInput));
   const errors = useMemo(() => validateBb(input), [input]);
   const isValid = !Object.values(errors).some(Boolean);
+  const availableCarbonTypes = useMemo(() => {
+    const values = [...quickCarbonTypes, ...carbonTypes];
+    const normalizedValues = new Map<string, string>();
+
+    for (const value of values) {
+      const normalized = value.trim().toUpperCase();
+
+      if (normalized) {
+        normalizedValues.set(normalized, normalized);
+      }
+    }
+
+    return Array.from(normalizedValues.values());
+  }, [carbonTypes]);
 
   useEffect(() => {
     setInput(buildInitialInput(record, initialInput));
@@ -74,9 +90,9 @@ export function BbForm({
           onChangeText={(rodzajSadzy) => patch({ rodzajSadzy })}
           error={errors.rodzajSadzy}
         />
-        {carbonTypes.length > 0 ? (
+        {availableCarbonTypes.length > 0 ? (
           <View style={styles.chips}>
-            {carbonTypes.map((type) => (
+            {availableCarbonTypes.map((type) => (
               <Choice key={type} selected={input.rodzajSadzy === type} label={type} onPress={() => patch({ rodzajSadzy: type })} />
             ))}
           </View>

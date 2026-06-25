@@ -18,12 +18,12 @@ export async function getReportDatabase() {
   return databasePromise;
 }
 
-export async function createReport(entries: string[]) {
+export async function createReport(bodyOrEntries: string | string[], entries: string[] = Array.isArray(bodyOrEntries) ? bodyOrEntries : []) {
   const db = await getReportDatabase();
   const now = new Date().toISOString();
   const id = `report-${Date.now()}`;
   const normalizedEntries = entries.map((entry) => entry.trim()).filter(Boolean);
-  const body = normalizedEntries.join('\n');
+  const body = Array.isArray(bodyOrEntries) ? normalizedEntries.join('\n') : bodyOrEntries.trim();
   const title = `Raport ${new Date().toLocaleDateString('pl-PL')}`;
 
   await db.withTransactionAsync(async () => {
