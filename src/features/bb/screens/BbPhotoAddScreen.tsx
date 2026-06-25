@@ -5,9 +5,11 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Card, liderColors } from '@/components/lider-ui';
 import { BbPhotoOcrPreview } from '../components/BbPhotoOcrPreview';
+import * as ocrService from '../services/ocrService';
 import { BbInput, BbOcrResult } from '../types/bbTypes';
 import { YardWithStats } from '../yards/types/yardTypes';
-import * as ocrService from '../services/ocrService';
+
+const OCR_GUIDE_RATIO = 0.42;
 
 export function BbPhotoAddScreen({
   yards,
@@ -37,7 +39,9 @@ export function BbPhotoAddScreen({
         skipProcessing: false,
       });
 
-      const nextResult = await ocrService.recognizeBbPhoto(photo.uri);
+      const nextResult = await ocrService.recognizeBbPhoto(photo.uri, {
+        maxTextY: typeof photo.height === 'number' ? photo.height * OCR_GUIDE_RATIO : undefined,
+      });
       const matchedPlacId = getMatchedYardId(nextResult.suggestedPlacName ?? '', yards);
       setResult(nextResult);
       setPlacName(nextResult.suggestedPlacName ?? '');
@@ -129,12 +133,22 @@ export function BbPhotoAddScreen({
       <Card style={styles.card}>
         <Text style={styles.title}>Dodaj BB ze zdjęcia</Text>
         <Text style={styles.stateText}>
-          Zrób jedno zdjęcie etykiety lub dokumentu. OCR uruchomi się dopiero po wykonaniu zdjęcia, a zapis będzie możliwy wyłącznie po zatwierdzeniu danych.
+          Ustaw odczytywaną linijkę tekstu nad niebieską linią. OCR uruchomi się dopiero po wykonaniu zdjęcia, a zapis będzie możliwy wyłącznie po zatwierdzeniu danych.
         </Text>
       </Card>
 
       <View style={styles.cameraFrame}>
         <CameraView ref={cameraRef} facing="back" style={styles.camera} />
+        <View pointerEvents="none" style={styles.readAreaOverlay}>
+          <View style={styles.readAreaShade} />
+          <View style={styles.guideLineWrap}>
+            <View style={styles.guideLine} />
+            <View style={styles.guideLabel}>
+              <Text style={styles.guideLabelText}>OCR czyta tylko tekst nad tą linią</Text>
+            </View>
+          </View>
+          <View style={styles.ignoredAreaShade} />
+        </View>
         {isProcessing ? (
           <View style={styles.processingOverlay}>
             <ActivityIndicator color="#ffffff" />
@@ -219,6 +233,40 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  readAreaOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  readAreaShade: {
+    height: `${OCR_GUIDE_RATIO * 100}%`,
+    backgroundColor: 'rgba(45,124,255,0.06)',
+  },
+  guideLineWrap: {
+    minHeight: 1,
+  },
+  guideLine: {
+    height: 3,
+    backgroundColor: liderColors.blue,
+    shadowColor: liderColors.blue,
+    shadowOpacity: 0.55,
+    shadowRadius: 8,
+  },
+  guideLabel: {
+    alignSelf: 'center',
+    marginTop: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  guideLabelText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  ignoredAreaShade: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.34)',
   },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -2,6 +2,32 @@ import TextRecognition from '@react-native-ml-kit/text-recognition';
 
 import { BbInput, BbLine, BbOcrResult } from '../types/bbTypes';
 
+type OcrFrame = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
+type OcrTextLine = {
+  text?: string;
+  frame?: OcrFrame;
+  bounding?: OcrFrame;
+};
+
+type OcrTextBlock = OcrTextLine & {
+  lines?: OcrTextLine[];
+};
+
+type OcrRecognitionResult = {
+  text?: string;
+  blocks?: OcrTextBlock[];
+};
+
+type RecognizeBbPhotoOptions = {
+  maxTextY?: number;
+};
+
 export function extractBatchNumberFromText(text: string) {
   const normalized = text.replace(/\s+/g, ' ');
   const prefixedMatch = normalized.match(/\bP\s*([0-9]{4,})\b/i);
@@ -75,10 +101,11 @@ export function buildSuggestedBbValues(rawText: string): Partial<BbInput> {
   };
 }
 
-export async function recognizeBbPhoto(imageUri: string): Promise<BbOcrResult> {
+export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPhotoOptions = {}): Promise<BbOcrResult> {
   try {
-    const result = await TextRecognition.recognize(imageUri);
-    return buildOcrResultFromText(result.text, imageUri);
+    const result = await TextRecognition.recognize(imageUri) as OcrRecognitionResult;
+    const rawText = getTextAboveLine(result, options.maxTextY);
+    return buildOcrResultFromText(rawText, imageUri);
   } catch (error) {
     return {
       imageUri,
@@ -92,6 +119,33 @@ export async function recognizeBbPhoto(imageUri: string): Promise<BbOcrResult> {
           : 'Nie udało się odczytać tekstu ze zdjęcia. Możesz wprowadzić dane ręcznie.',
     };
   }
+}
+
+function getTextAboveLine(result: OcrRecognitionResult, maxTextY?: number) {
+  if (!maxTextY || !result.blocks?.length) {
+    return result.text ?? '';
+  }
+
+  const lines = result.blocks.flatMap((block) => block.lines?.length ? block.lines : [block]);
+  const selectedLines = lines
+    .filter((line) => isLineAboveCutoff(line, maxTextY))
+    .map((line) => line.text?.trim())
+    .filter(Boolean);
+
+  return selectedLines.length > 0 ? selectedLines.join('\n') : result.text ?? '';
+}
+
+function isLineAboveCutoff(line: OcrTextLine, maxTextY: number) {
+  const frame = line.frame ?? line.bounding;
+
+  if (!frame || typeof frame.y !== 'number') {
+    return true;
+  }
+
+  const height = typeof frame.height === 'number' ? frame.height : 0;
+  const lineCenterY = frame.y + height / 2;
+
+  return lineCenterY <= maxTextY;
 }
 
 export function buildOcrResultFromText(rawText: string, imageUri: string | null = null): BbOcrResult {
