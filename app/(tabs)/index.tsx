@@ -28,6 +28,7 @@ const quickActions: {
   { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green, route: '/bb/new' },
   { label: 'Nowy grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
   { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
+  { label: 'Nowy raport', icon: 'reader-outline', color: liderColors.amber, route: '/reports/new' },
 ];
 
 type DashboardData = {

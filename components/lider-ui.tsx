@@ -1,6 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ComponentProps, PropsWithChildren, ReactNode } from 'react';
+import { useRouter } from 'expo-router';
+import { ComponentProps, PropsWithChildren, ReactNode, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleProp,
@@ -70,12 +72,14 @@ export function AppScreen({
 }: AppScreenProps) {
   const colorScheme = useColorScheme();
   const colors = colorScheme === 'light' ? liderLightColors : liderColors;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const openLeftMenu = leftIcon === 'menu-outline' && !onLeftPress;
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <View style={[styles.phoneFrame, { backgroundColor: colors.bg }]}>
         <View style={[styles.header, { borderBottomColor: colors.borderSoft }]}>
-          <IconButton name={leftIcon} onPress={onLeftPress} color={colors.text} />
+          <IconButton name={leftIcon} onPress={openLeftMenu ? () => setIsMenuOpen(true) : onLeftPress} color={colors.text} />
           <View style={styles.headerTitleWrap}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
             {subtitle ? <Text style={[styles.headerSubtitle, { color: colors.dim }]}>{subtitle}</Text> : null}
@@ -89,7 +93,47 @@ export function AppScreen({
           {children}
         </ScrollView>
       </View>
+      <MainMenu visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </SafeAreaView>
+  );
+}
+
+function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const items: { label: string; icon: LiderIconName; route: string }[] = [
+    { label: 'Dashboard', icon: 'home-outline', route: '/(tabs)' },
+    { label: 'BB i Place', icon: 'briefcase-outline', route: '/(tabs)/bb' },
+    { label: 'Nowy grafik', icon: 'calendar-outline', route: '/(tabs)/grafik' },
+    { label: 'Notatki', icon: 'document-text-outline', route: '/(tabs)/notatki' },
+    { label: 'Raporty', icon: 'reader-outline', route: '/reports' },
+  ];
+
+  function goTo(route: string) {
+    onClose();
+    router.push(route as never);
+  }
+
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={styles.menuBackdrop}>
+        <Pressable style={styles.menuPanel}>
+          <View style={styles.menuHeader}>
+            <Text style={styles.menuTitle}>Menu</Text>
+            <IconButton name="close-outline" onPress={onClose} color={liderColors.text} />
+          </View>
+          {items.map((item, index) => (
+            <Pressable
+              key={item.label}
+              onPress={() => goTo(item.route)}
+              style={[styles.menuItem, index > 0 && styles.menuItemBorder]}>
+              <Ionicons name={item.icon} size={20} color={liderColors.text} />
+              <Text style={styles.menuItemText}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={liderColors.muted} />
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -216,6 +260,49 @@ const styles = StyleSheet.create({
     backgroundColor: liderColors.red,
     borderWidth: 1,
     borderColor: liderColors.bg,
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  menuPanel: {
+    width: '82%',
+    maxWidth: 360,
+    minHeight: '100%',
+    borderRightWidth: 1,
+    borderRightColor: liderColors.borderSoft,
+    backgroundColor: liderColors.bg,
+    paddingTop: 42,
+    paddingHorizontal: 14,
+  },
+  menuHeader: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  menuTitle: {
+    color: liderColors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  menuItem: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 8,
+  },
+  menuItemBorder: {
+    borderTopWidth: 1,
+    borderTopColor: liderColors.borderSoft,
+  },
+  menuItemText: {
+    flex: 1,
+    color: liderColors.text,
+    fontSize: 14,
+    fontWeight: '800',
   },
   content: {
     padding: 16,
