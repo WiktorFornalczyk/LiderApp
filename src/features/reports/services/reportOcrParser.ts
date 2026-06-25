@@ -91,7 +91,8 @@ export function formatParsedEntryForReport(entry: ParsedReportEntry): string {
   }
 
   const rangeText = `${entry.rangeFrom}-${entry.rangeTo}`;
-  const unitText = entry.unitType === 'PALETY' ? `MW ${entry.carbonType} ${entry.batchNumber} palety` : `${entry.carbonType} ${entry.batchNumber} BB`;
+  const unitText =
+    entry.unitType === 'PALETY' ? `MW ${entry.carbonType} ${entry.batchNumber} palety` : `${entry.carbonType} ${entry.batchNumber} BB`;
 
   return `${entry.line} ${unitText} ${rangeText} ${entry.yardText}`;
 }

@@ -1,11 +1,28 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen, Card, EmptySpacer, liderColors, SectionTitle } from '@/components/lider-ui';
+import * as reportRepository from '@/src/features/reports/services/reportRepository';
+import { Report } from '@/src/features/reports/types/reportTypes';
 
 export default function ReportsScreen() {
   const router = useRouter();
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadReports = useCallback(async () => {
+    setIsLoading(true);
+    setReports(await reportRepository.getRecentReports());
+    setIsLoading(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports])
+  );
 
   return (
     <AppScreen title="Raporty" leftIcon="chevron-back" onLeftPress={() => router.back()}>
@@ -24,9 +41,28 @@ export default function ReportsScreen() {
       <EmptySpacer height={18} />
 
       <SectionTitle>Ostatnie raporty</SectionTitle>
-      <Card style={styles.emptyCard}>
-        <Text style={styles.emptyText}>Brak zapisanych raportów.</Text>
-      </Card>
+      {isLoading ? (
+        <Card style={styles.emptyCard}>
+          <ActivityIndicator color={liderColors.blue} />
+          <Text style={styles.emptyText}>Wczytywanie raportów...</Text>
+        </Card>
+      ) : reports.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <Text style={styles.emptyText}>Brak zapisanych raportów.</Text>
+        </Card>
+      ) : (
+        <View style={styles.reportList}>
+          {reports.map((report) => (
+            <Card key={report.id} style={styles.reportCard}>
+              <Text style={styles.reportTitle}>{report.title}</Text>
+              <Text style={styles.reportMeta}>
+                {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleString('pl-PL')}
+              </Text>
+              <Text numberOfLines={3} style={styles.reportBody}>{report.body}</Text>
+            </Card>
+          ))}
+        </View>
+      )}
     </AppScreen>
   );
 }
@@ -65,6 +101,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     padding: 16,
   },
   emptyText: {
@@ -72,5 +109,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  reportList: {
+    gap: 10,
+  },
+  reportCard: {
+    gap: 7,
+    padding: 12,
+  },
+  reportTitle: {
+    color: liderColors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  reportMeta: {
+    color: liderColors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  reportBody: {
+    color: liderColors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
 });
