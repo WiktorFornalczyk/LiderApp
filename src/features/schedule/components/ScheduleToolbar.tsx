@@ -72,7 +72,7 @@ export function ScheduleToolbar({
         <ToolButton
           disabled={!canUseScheduleActions}
           icon="document-text-outline"
-          label="Eksport DOCX"
+          label="Eksport Excel"
           onPress={onExport}
           tone="green"
         />

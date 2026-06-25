@@ -12,7 +12,7 @@ export const scheduleErrorMessages = {
   updateFailed: 'Nie udało się zapisać zmiany.',
   loadFailed: 'Nie udało się wczytać grafiku.',
   copyFailed: 'Nie udało się skopiować grafiku z poprzedniego tygodnia.',
-  exportFailed: 'Nie udało się wygenerować pliku DOCX.',
+  exportFailed: 'Nie udało się wygenerować pliku Excel.',
 };
 
 export function validateScheduleRange(input: ScheduleWeekInput): ScheduleValidationErrors {

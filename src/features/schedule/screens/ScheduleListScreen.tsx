@@ -105,7 +105,7 @@ export function ScheduleListScreen() {
     Alert.alert('Wyczyścić grafik?', 'Czy na pewno chcesz wyczyścić grafik dla tego zakresu dat?', [
       { text: 'Anuluj', style: 'cancel' },
       {
-        text: 'Wyczyść',
+          text: 'Wyczyść',
         style: 'destructive',
         onPress: async () => {
           await scheduleService.clearScheduleWeek(selectedWeekId);
@@ -145,11 +145,11 @@ export function ScheduleListScreen() {
     }
 
     try {
-      const result = await scheduleExportService.generateScheduleDocx(selectedWeekId);
+      const result = await scheduleExportService.generateScheduleXlsx(selectedWeekId);
       Alert.alert(
         'Eksport gotowy',
         result.uri
-          ? `Plik zapisano lokalnie: ${result.fileName}`
+          ? `Plik ${result.fileName} zapisano: ${result.locationLabel}.`
           : `Wygenerowano plik ${result.fileName}. Udostępnianie plików nie jest dostępne w tym środowisku.`
       );
     } catch {
@@ -222,7 +222,7 @@ export function ScheduleListScreen() {
             </Card>
           ) : (
             <View style={styles.weekList}>
-              {weeks.slice(0, 8).map((week) => (
+              {weeks.map((week) => (
                 <Pressable
                   key={week.id}
                   onPress={() => {
@@ -343,3 +343,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
+
+

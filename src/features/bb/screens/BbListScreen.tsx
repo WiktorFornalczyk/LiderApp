@@ -91,7 +91,7 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
   }, [records, yards]);
 
   return (
-    <AppScreen title="BB i Place" rightSlot={<HeaderActions onAdd={() => setMode('create')} onPhoto={() => setMode('photo')} />}>
+    <AppScreen title="BB" rightSlot={<HeaderActions onAdd={() => setMode('create')} onPhoto={() => setMode('photo')} />}>
       <View style={styles.modeTabs}>
         <ModeTab label="BB" selected={mode === 'list'} onPress={() => setMode('list')} />
         <ModeTab label="Place" selected={mode === 'yards'} onPress={() => setMode('yards')} />

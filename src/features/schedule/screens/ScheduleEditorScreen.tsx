@@ -7,7 +7,7 @@ import { ScheduleTable } from '../components/ScheduleTable';
 import { ShiftPickerModal } from '../components/ShiftPickerModal';
 import { ScheduleEditorData, ScheduleEntryWithEmployee, ShiftCode } from '../types/scheduleTypes';
 import { formatDisplayDate } from '../utils/dateRangeUtils';
-import { getShiftDescription } from '../utils/shiftUtils';
+import { getShiftDescription, getShiftHours, getShiftLabel, getShiftNumber } from '../utils/shiftUtils';
 import { scheduleErrorMessages } from '../validation/scheduleValidation';
 import * as scheduleService from '../services/scheduleService';
 
@@ -55,10 +55,39 @@ export function ScheduleEditorScreen({
     }
 
     try {
-      setUpdatingEntryId(selectedEntry.id);
+      const entry = selectedEntry;
+      setUpdatingEntryId(entry.id);
       setSelectedEntry(null);
-      await scheduleService.updateScheduleEntry(selectedEntry.id, shiftCode);
-      await loadSchedule();
+      await scheduleService.updateScheduleEntry(entry.id, shiftCode);
+      setData((currentData) => {
+        if (!currentData) {
+          return currentData;
+        }
+
+        const updatedAt = new Date().toISOString();
+        const nextData = {
+          ...currentData,
+          entries: currentData.entries.map((item) =>
+            item.id === entry.id
+              ? {
+                  ...item,
+                  shiftCode,
+                  shiftLabel: getShiftLabel(shiftCode),
+                  shiftNumber: getShiftNumber(shiftCode),
+                  hours: getShiftHours(shiftCode),
+                  updatedAt,
+                }
+              : item
+          ),
+          week: {
+            ...currentData.week,
+            updatedAt,
+          },
+        };
+
+        onLoaded?.(nextData);
+        return nextData;
+      });
     } catch {
       setError(scheduleErrorMessages.updateFailed);
     } finally {

@@ -18,8 +18,9 @@ import * as bbArchiveService from '@/src/features/bb/services/bbArchiveService';
 import * as bbBackupService from '@/src/features/bb/services/bbBackupService';
 import * as bbService from '@/src/features/bb/services/bbService';
 import { BbRecordWithYard } from '@/src/features/bb/types/bbTypes';
+import * as scheduleMaintenanceService from '@/src/features/schedule/services/scheduleMaintenanceService';
 
-type SettingsMode = 'home' | 'archive' | 'import' | 'retention' | 'details';
+type SettingsMode = 'home' | 'archive' | 'import' | 'retention' | 'scheduleRetention' | 'details';
 
 const informationItems: SettingsItem[] = [
   { label: 'O aplikacji', icon: 'information-circle-outline' },
@@ -39,17 +40,22 @@ export default function WiecejScreen() {
   const [selectedRecord, setSelectedRecord] = useState<BbRecordWithYard | null>(null);
   const [retentionDays, setRetentionDays] = useState(7);
   const [retentionInput, setRetentionInput] = useState('7');
+  const [scheduleRetentionDays, setScheduleRetentionDays] = useState(28);
+  const [scheduleRetentionInput, setScheduleRetentionInput] = useState('28');
   const [isLoading, setIsLoading] = useState(true);
 
   const loadSettingsData = useCallback(async () => {
     setIsLoading(true);
-    const [nextArchivedRecords, nextRetentionDays] = await Promise.all([
+    const [nextArchivedRecords, nextRetentionDays, nextScheduleRetentionDays] = await Promise.all([
       bbService.getArchivedBbRecords(),
       bbArchiveService.getBbArchiveRetentionDays(),
+      scheduleMaintenanceService.getScheduleRetentionDays(),
     ]);
     setArchivedRecords(nextArchivedRecords);
     setRetentionDays(nextRetentionDays);
     setRetentionInput(String(nextRetentionDays));
+    setScheduleRetentionDays(nextScheduleRetentionDays);
+    setScheduleRetentionInput(String(nextScheduleRetentionDays));
     setIsLoading(false);
   }, []);
 
@@ -84,6 +90,19 @@ export default function WiecejScreen() {
       setRetentionDays(nextDays);
       setRetentionInput(String(nextDays));
       Alert.alert('Zapisano ustawienie', `BB w archiwum będą usuwane po ${nextDays} dniach.`);
+      await loadSettingsData();
+      setMode('home');
+    } catch (error) {
+      Alert.alert('Nie udało się zapisać ustawienia.', error instanceof Error ? error.message : undefined);
+    }
+  }
+
+  async function saveScheduleRetentionDays() {
+    try {
+      const nextDays = await scheduleMaintenanceService.setScheduleRetentionDays(Number(scheduleRetentionInput));
+      setScheduleRetentionDays(nextDays);
+      setScheduleRetentionInput(String(nextDays));
+      Alert.alert('Zapisano ustawienie', `Grafiki będą usuwane po ${nextDays} dniach od daty zakończenia.`);
       await loadSettingsData();
       setMode('home');
     } catch (error) {
@@ -170,6 +189,30 @@ export default function WiecejScreen() {
     );
   }
 
+  if (mode === 'scheduleRetention') {
+    return (
+      <AppScreen title="Czyszczenie grafików" leftIcon="chevron-back" onLeftPress={() => setMode('home')}>
+        <SectionTitle>Automatyczne czyszczenie</SectionTitle>
+        <Card style={styles.retentionCard}>
+          <Text style={styles.retentionText}>
+            Ustaw, po ilu dniach od daty zakończenia grafiki mają być automatycznie usuwane. Domyślnie: 28 dni. Zakres: 1-365 dni.
+          </Text>
+          <TextInput
+            keyboardType="number-pad"
+            onChangeText={setScheduleRetentionInput}
+            placeholder="Liczba dni"
+            placeholderTextColor={liderColors.dim}
+            style={styles.input}
+            value={scheduleRetentionInput}
+          />
+          <Pressable onPress={saveScheduleRetentionDays} style={styles.primaryButton}>
+            <Text style={styles.primaryText}>Zapisz ustawienie</Text>
+          </Pressable>
+        </Card>
+      </AppScreen>
+    );
+  }
+
   const dataItems: SettingsItem[] = [
     { label: 'Eksportuj dane BB (JSON)', icon: 'download-outline', onPress: handleExport },
     { label: 'Importuj dane BB (JSON)', icon: 'mail-outline', onPress: () => setMode('import') },
@@ -186,6 +229,12 @@ export default function WiecejScreen() {
       icon: 'trash-outline',
       sub: `Po ${retentionDays} dniach`,
       onPress: () => setMode('retention'),
+    },
+    {
+      label: 'Automatyczne czyszczenie grafików',
+      icon: 'calendar-clear-outline',
+      sub: `Po ${scheduleRetentionDays} dniach`,
+      onPress: () => setMode('scheduleRetention'),
     },
   ];
 

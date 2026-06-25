@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import { ComponentProps, PropsWithChildren, ReactNode, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { ComponentProps, PropsWithChildren, ReactNode, useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -13,6 +14,10 @@ import {
   ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import * as calendarService from '@/src/features/calendar/services/calendarService';
+import { CalendarEvent } from '@/src/features/calendar/types/calendarTypes';
+import { formatCalendarDate, formatEventTime } from '@/src/features/calendar/utils/calendarFormatUtils';
 
 export const liderColors = {
   bg: '#080d12',
@@ -50,6 +55,14 @@ const liderLightColors = {
 
 export type LiderIconName = ComponentProps<typeof Ionicons>['name'];
 
+type NotificationItem = {
+  id: string;
+  eventId: string;
+  title: string;
+  details: string;
+  tone: 'today' | 'upcoming';
+};
+
 type AppScreenProps = PropsWithChildren<{
   title: string;
   subtitle?: string;
@@ -73,7 +86,40 @@ export function AppScreen({
   const colorScheme = useColorScheme();
   const colors = colorScheme === 'light' ? liderLightColors : liderColors;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const openLeftMenu = leftIcon === 'menu-outline' && !onLeftPress;
+  const openNotifications = rightIcon === 'notifications-outline' && !rightSlot;
+
+  const loadNotifications = useCallback(async () => {
+    if (!openNotifications) {
+      return;
+    }
+
+    try {
+      setNotificationsError(null);
+      setIsLoadingNotifications(true);
+      const summary = await calendarService.getDashboardCalendarSummary();
+      setNotifications(buildNotificationItems(summary.todayEvents, summary.upcomingEvents));
+    } catch {
+      setNotificationsError('Nie udało się wczytać powiadomień.');
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  }, [openNotifications]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNotifications();
+    }, [loadNotifications])
+  );
+
+  function openNotificationCenter() {
+    setIsNotificationsOpen(true);
+    loadNotifications();
+  }
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
@@ -84,7 +130,18 @@ export function AppScreen({
             <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
             {subtitle ? <Text style={[styles.headerSubtitle, { color: colors.dim }]}>{subtitle}</Text> : null}
           </View>
-          {rightSlot ?? (rightIcon ? <IconButton name={rightIcon} color={colors.text} /> : <View style={styles.iconSpacer} />)}
+          {rightSlot ?? (
+            rightIcon ? (
+              <IconButton
+                name={rightIcon}
+                badge={openNotifications && notifications.length > 0}
+                color={colors.text}
+                onPress={openNotifications ? openNotificationCenter : undefined}
+              />
+            ) : (
+              <View style={styles.iconSpacer} />
+            )
+          )}
         </View>
 
         <ScrollView
@@ -94,16 +151,46 @@ export function AppScreen({
         </ScrollView>
       </View>
       <MainMenu visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <NotificationCenter
+        error={notificationsError}
+        isLoading={isLoadingNotifications}
+        items={notifications}
+        visible={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onRefresh={loadNotifications}
+      />
     </SafeAreaView>
   );
+}
+
+function buildNotificationItems(todayEvents: CalendarEvent[], upcomingEvents: CalendarEvent[]): NotificationItem[] {
+  const todayItems = todayEvents.map((event) => ({
+    id: `today-${event.id}`,
+    eventId: event.id,
+    title: event.title,
+    details: `Dzisiaj · ${formatEventTime(event)} · ${event.eventType}`,
+    tone: 'today' as const,
+  }));
+  const upcomingItems = upcomingEvents
+    .filter((event) => !todayEvents.some((todayEvent) => todayEvent.id === event.id))
+    .map((event) => ({
+      id: `upcoming-${event.id}`,
+      eventId: event.id,
+      title: event.title,
+      details: `${formatCalendarDate(event.eventDate)} · ${formatEventTime(event)} · ${event.eventType}`,
+      tone: 'upcoming' as const,
+    }));
+
+  return [...todayItems, ...upcomingItems].slice(0, 8);
 }
 
 function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
   const items: { label: string; icon: LiderIconName; route: string }[] = [
     { label: 'Dashboard', icon: 'home-outline', route: '/(tabs)' },
-    { label: 'BB i Place', icon: 'briefcase-outline', route: '/(tabs)/bb' },
-    { label: 'Nowy grafik', icon: 'calendar-outline', route: '/(tabs)/grafik' },
+    { label: 'BB', icon: 'briefcase-outline', route: '/(tabs)/bb' },
+    { label: 'Grafik', icon: 'calendar-outline', route: '/(tabs)/grafik' },
+    { label: 'Kalendarz', icon: 'today-outline', route: '/calendar' },
     { label: 'Notatki', icon: 'document-text-outline', route: '/(tabs)/notatki' },
     { label: 'Raporty', icon: 'reader-outline', route: '/reports' },
   ];
@@ -140,19 +227,103 @@ function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
 export function IconButton({
   name,
   accent,
+  badge,
   color,
   onPress,
 }: {
   name: LiderIconName;
   accent?: boolean;
+  badge?: boolean;
   color?: string;
   onPress?: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={styles.iconButton}>
       <Ionicons name={name} size={22} color={accent ? liderColors.blue : color ?? liderColors.text} />
-      {name === 'notifications-outline' ? <View style={styles.dot} /> : null}
+      {badge ? <View style={styles.dot} /> : null}
     </Pressable>
+  );
+}
+
+function NotificationCenter({
+  visible,
+  items,
+  isLoading,
+  error,
+  onClose,
+  onRefresh,
+}: {
+  visible: boolean;
+  items: NotificationItem[];
+  isLoading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const router = useRouter();
+
+  function openEvent(eventId: string) {
+    onClose();
+    router.push(`/calendar/${eventId}` as never);
+  }
+
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={styles.notificationBackdrop}>
+        <Pressable style={styles.notificationPanel}>
+          <View style={styles.notificationHeader}>
+            <View>
+              <Text style={styles.notificationTitle}>Powiadomienia</Text>
+              <Text style={styles.notificationSubtitle}>Kalendarz i najbliższe terminy</Text>
+            </View>
+            <IconButton name="close-outline" onPress={onClose} color={liderColors.text} />
+          </View>
+
+          {isLoading ? (
+            <View style={styles.notificationState}>
+              <ActivityIndicator color={liderColors.blue} />
+              <Text style={styles.notificationStateText}>Wczytywanie powiadomień...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.notificationState}>
+              <Text style={styles.notificationStateText}>{error}</Text>
+              <Pressable onPress={onRefresh} style={styles.notificationAction}>
+                <Text style={styles.notificationActionText}>Odśwież</Text>
+              </Pressable>
+            </View>
+          ) : items.length === 0 ? (
+            <View style={styles.notificationState}>
+              <Ionicons name="notifications-off-outline" size={28} color={liderColors.muted} />
+              <Text style={styles.notificationStateText}>Brak powiadomień.</Text>
+              <Pressable onPress={() => openEvent('new')} style={styles.notificationAction}>
+                <Text style={styles.notificationActionText}>Dodaj wydarzenie</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <ScrollView style={styles.notificationList} contentContainerStyle={styles.notificationListContent}>
+                {items.map((item, index) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => openEvent(item.eventId)}
+                    style={[styles.notificationItem, index > 0 && styles.notificationBorder]}>
+                    <View style={[styles.notificationMarker, item.tone === 'today' && styles.notificationMarkerToday]} />
+                    <View style={styles.notificationBody}>
+                      <Text style={styles.notificationItemTitle}>{item.title}</Text>
+                      <Text style={styles.notificationDetails}>{item.details}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={liderColors.muted} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Pressable onPress={onRefresh} style={styles.notificationAction}>
+                <Text style={styles.notificationActionText}>Odśwież</Text>
+              </Pressable>
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -303,6 +474,123 @@ const styles = StyleSheet.create({
     color: liderColors.text,
     fontSize: 14,
     fontWeight: '800',
+  },
+  notificationBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingTop: 74,
+    paddingHorizontal: 14,
+  },
+  notificationPanel: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '76%',
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.bg,
+    padding: 14,
+  },
+  notificationHeader: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  notificationTitle: {
+    color: liderColors.text,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  notificationSubtitle: {
+    marginTop: 3,
+    color: liderColors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  notificationList: {
+    maxHeight: 360,
+  },
+  notificationListContent: {
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.surface,
+    overflow: 'hidden',
+  },
+  notificationItem: {
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  notificationBorder: {
+    borderTopWidth: 1,
+    borderTopColor: liderColors.borderSoft,
+  },
+  notificationMarker: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: liderColors.blue,
+  },
+  notificationMarkerToday: {
+    backgroundColor: liderColors.amber,
+  },
+  notificationBody: {
+    flex: 1,
+    gap: 3,
+  },
+  notificationItemTitle: {
+    color: liderColors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  notificationDetails: {
+    color: liderColors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
+  },
+  notificationState: {
+    minHeight: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.surface,
+    padding: 16,
+  },
+  notificationStateText: {
+    color: liderColors.muted,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  notificationAction: {
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: liderColors.borderSoft,
+    borderRadius: 8,
+    backgroundColor: liderColors.surfaceSoft,
+    paddingHorizontal: 12,
+    marginTop: 10,
+  },
+  notificationActionText: {
+    color: liderColors.blue,
+    fontSize: 12,
+    fontWeight: '900',
   },
   content: {
     padding: 16,

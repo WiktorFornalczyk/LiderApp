@@ -15,9 +15,9 @@ import * as bbService from '@/src/features/bb/services/bbService';
 import { BbRecordWithYard } from '@/src/features/bb/types/bbTypes';
 import { formatDateTime } from '@/src/features/bb/utils/bbFormatUtils';
 import { formatBbRange } from '@/src/features/bb/utils/bbRangeUtils';
-import * as scheduleService from '@/src/features/schedule/services/scheduleService';
-import { ScheduleWeek } from '@/src/features/schedule/types/scheduleTypes';
-import { formatDisplayDate } from '@/src/features/schedule/utils/dateRangeUtils';
+import * as calendarService from '@/src/features/calendar/services/calendarService';
+import { CalendarEvent } from '@/src/features/calendar/types/calendarTypes';
+import { formatCalendarDate, formatEventTime } from '@/src/features/calendar/utils/calendarFormatUtils';
 
 const quickActions: {
   label: string;
@@ -26,6 +26,7 @@ const quickActions: {
   route: string;
 }[] = [
   { label: 'Dodaj BB', icon: 'add-circle-outline', color: liderColors.green, route: '/bb/new' },
+  { label: 'Dodaj wydarzenie', icon: 'today-outline', color: liderColors.blue, route: '/calendar/new' },
   { label: 'Nowy grafik', icon: 'calendar-outline', color: '#a778ff', route: '/(tabs)/grafik' },
   { label: 'Nowa notatka', icon: 'create-outline', color: liderColors.violet, route: '/notes/new' },
   { label: 'Nowy raport', icon: 'reader-outline', color: liderColors.amber, route: '/reports/new' },
@@ -38,10 +39,11 @@ type DashboardData = {
     yards: number;
   };
   recentBb: BbRecordWithYard[];
-  schedule: {
-    currentWeek: ScheduleWeek | null;
-    activeEmployeesCount: number;
-    todayShiftSummary: { shiftNumber: number; peopleCount: number; hours: number }[];
+  calendar: {
+    todayEvents: CalendarEvent[];
+    upcomingEvents: CalendarEvent[];
+    todayCount: number;
+    nextEvent: CalendarEvent | null;
   };
 };
 
@@ -55,15 +57,15 @@ export default function HomeScreen() {
     try {
       setError(null);
       setIsLoading(true);
-      const [bbSummary, scheduleSummary] = await Promise.all([
+      const [bbSummary, calendarSummary] = await Promise.all([
         bbService.getDashboardBbSummary(),
-        scheduleService.getDashboardScheduleSummary(),
+        calendarService.getDashboardCalendarSummary(),
       ]);
 
       setData({
         counts: bbSummary.counts,
         recentBb: bbSummary.recent,
-        schedule: scheduleSummary,
+        calendar: calendarSummary,
       });
     } catch {
       setError('Nie udało się wczytać danych dashboardu.');
@@ -79,7 +81,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <AppScreen title="LiderApp" subtitle="Rafineria Jasło - Sadza" rightIcon="notifications-outline">
+    <AppScreen title="LiderApp" rightIcon="notifications-outline">
       <SectionTitle>Szybkie akcje</SectionTitle>
       <View style={styles.quickGrid}>
         {quickActions.map((action) => (
@@ -105,7 +107,6 @@ export default function HomeScreen() {
           <View style={styles.summaryGrid}>
             <MetricCard label="Aktywne BB" value={String(data.counts.active)} color={liderColors.blue} />
             <MetricCard label="Archiwum BB" value={String(data.counts.archived)} color={liderColors.amber} />
-            <MetricCard label="Place" value={String(data.counts.yards)} color={liderColors.green} />
           </View>
 
           <EmptySpacer height={18} />
@@ -137,59 +138,41 @@ export default function HomeScreen() {
 
           <SectionTitle>Najbliższe wydarzenia</SectionTitle>
           <Card>
-            {buildScheduleEvents(data.schedule).map((event, index) => (
+            {data.calendar.upcomingEvents.length === 0 ? (
+              <Pressable onPress={() => router.push('/calendar/new' as never)} style={styles.emptyRow}>
+                <Text style={styles.stateText}>Brak wydarzeń. Dodaj pierwsze wydarzenie.</Text>
+              </Pressable>
+            ) : (
+              data.calendar.upcomingEvents.map((event, index) => (
               <Pressable
-                key={event.title}
-                onPress={() => router.push('/(tabs)/grafik' as never)}
+                key={event.id}
+                onPress={() => router.push(`/calendar/${event.id}` as never)}
                 style={[styles.listRow, index > 0 && styles.rowBorder]}>
-                <View style={[styles.marker, { backgroundColor: event.color }]} />
+                <View style={[styles.marker, { backgroundColor: getCalendarEventColor(event.eventType) }]} />
                 <View style={styles.rowBody}>
                   <Text style={styles.rowTitle}>{event.title}</Text>
-                  <Text style={styles.rowSub}>{event.details}</Text>
+                  <Text style={styles.rowSub}>
+                    {formatCalendarDate(event.eventDate)} Â· {formatEventTime(event)} Â· {event.eventType}
+                  </Text>
                 </View>
-                <Text style={styles.rowTime}>{event.time}</Text>
+                <Text style={styles.rowTime}>{event.eventDate}</Text>
               </Pressable>
-            ))}
+              ))
+            )}
           </Card>
+
         </>
       ) : null}
     </AppScreen>
   );
 }
 
-function buildScheduleEvents(schedule: DashboardData['schedule']) {
-  const currentWeek = schedule.currentWeek;
-  const totalPeopleToday = schedule.todayShiftSummary.reduce((sum, item) => sum + item.peopleCount, 0);
-  const totalHoursToday = schedule.todayShiftSummary.reduce((sum, item) => sum + item.hours, 0);
-  const shiftDetails =
-    schedule.todayShiftSummary.length > 0
-      ? schedule.todayShiftSummary
-          .map((item) => `Zmiana ${item.shiftNumber}: ${item.peopleCount} os. / ${item.hours}h`)
-          .join(' · ')
-      : 'Brak obsady zmian na dziś.';
-
-  return [
-    {
-      title: currentWeek ? 'Aktualny grafik' : 'Brak grafiku na dziś',
-      details: currentWeek
-        ? `${formatDisplayDate(currentWeek.startDate)} - ${formatDisplayDate(currentWeek.endDate)}`
-        : 'Utwórz nowy grafik dla bieżącego zakresu.',
-      time: currentWeek ? 'Teraz' : 'Do uzupełnienia',
-      color: currentWeek ? liderColors.blue : liderColors.amber,
-    },
-    {
-      title: 'Dzisiejsza obsada zmian',
-      details: `${shiftDetails} Razem: ${totalPeopleToday} os. / ${totalHoursToday}h`,
-      time: 'Dzisiaj',
-      color: liderColors.green,
-    },
-    {
-      title: 'Aktywni pracownicy',
-      details: `${schedule.activeEmployeesCount} osób dostępnych do grafiku.`,
-      time: 'Grafik',
-      color: liderColors.violet,
-    },
-  ];
+function getCalendarEventColor(type: CalendarEvent['eventType']) {
+  if (type === 'BB') return liderColors.amber;
+  if (type === 'Urlop') return liderColors.green;
+  if (type === 'Przypomnienie') return liderColors.red;
+  if (type === 'Raport') return liderColors.blue;
+  return liderColors.violet;
 }
 
 function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
@@ -323,3 +306,4 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 });
+
