@@ -53,13 +53,20 @@ export default function ReportsScreen() {
       ) : (
         <View style={styles.reportList}>
           {reports.map((report) => (
-            <Card key={report.id} style={styles.reportCard}>
-              <Text style={styles.reportTitle}>{report.title}</Text>
-              <Text style={styles.reportMeta}>
-                {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleString('pl-PL')}
-              </Text>
-              <Text numberOfLines={3} style={styles.reportBody}>{report.body}</Text>
-            </Card>
+            <Pressable key={report.id} onPress={() => router.push(`/reports/${report.id}` as never)}>
+              <Card style={styles.reportCard}>
+                <View style={styles.reportHeader}>
+                  <View style={styles.reportHeaderText}>
+                    <Text style={styles.reportTitle}>{report.title}</Text>
+                    <Text style={styles.reportMeta}>
+                      {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleString('pl-PL')}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={liderColors.muted} />
+                </View>
+                <Text numberOfLines={3} style={styles.reportBody}>{report.body}</Text>
+              </Card>
+            </Pressable>
           ))}
         </View>
       )}
@@ -116,6 +123,15 @@ const styles = StyleSheet.create({
   reportCard: {
     gap: 7,
     padding: 12,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reportHeaderText: {
+    flex: 1,
+    gap: 3,
   },
   reportTitle: {
     color: liderColors.text,

@@ -290,7 +290,7 @@ export default function NewReportScreen() {
 
       <SectionTitle>Temperatury</SectionTitle>
       <Card style={styles.temperatureCard}>
-        {([1, 2] as const).map((shiftNumber) => (
+        {shiftNumbers.map((shiftNumber) => (
           <View key={shiftNumber} style={styles.temperatureRow}>
             <Text style={styles.temperatureLabel}>Zmiana {shiftNumber}</Text>
             <TextInput

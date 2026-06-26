@@ -12,13 +12,15 @@ export type ReportDraftEntry = {
 
 export type ReportTemperatures = Record<ReportShiftNumber, string>;
 
+const reportShiftNumbers: ReportShiftNumber[] = [1, 2, 3];
+
 export async function buildFormattedReport(entries: ReportDraftEntry[], temperatures: ReportTemperatures) {
   const reportDate = getYesterdayIsoDate();
   const displayDate = formatDisplayDate(reportDate);
   const hourlySummary = await buildHourlySummary(reportDate);
   const sections: string[] = [displayDate];
 
-  for (const shiftNumber of [1, 2] as const) {
+  for (const shiftNumber of reportShiftNumbers) {
     sections.push(`Zmiana ${shiftNumber}`);
     sections.push(...formatProductionLines(entries.filter((entry) => entry.shiftNumber === shiftNumber)));
     sections.push(`Temperatura: ${temperatures[shiftNumber].trim() || '(...)'}BB-(...)°C`);
@@ -28,7 +30,7 @@ export async function buildFormattedReport(entries: ReportDraftEntry[], temperat
   sections.push('Raport godzinowy:');
   sections.push(displayDate);
 
-  for (const shiftNumber of [1, 2, 3] as const) {
+  for (const shiftNumber of reportShiftNumbers) {
     const summary = hourlySummary[shiftNumber];
     sections.push(`Zmiana ${shiftNumber} - ${summary.peopleCount} osób ~ ${summary.hours} godzin`);
   }

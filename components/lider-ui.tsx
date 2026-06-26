@@ -122,7 +122,7 @@ export function AppScreen({
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+    <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <View style={[styles.phoneFrame, { backgroundColor: colors.bg }]}>
         <View style={[styles.header, { borderBottomColor: colors.borderSoft }]}>
           <IconButton name={leftIcon} onPress={openLeftMenu ? () => setIsMenuOpen(true) : onLeftPress} color={colors.text} />

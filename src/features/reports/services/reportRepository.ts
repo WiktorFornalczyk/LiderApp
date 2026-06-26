@@ -64,3 +64,20 @@ export async function getReportById(id: string): Promise<Report | null> {
   const db = await getReportDatabase();
   return db.getFirstAsync<ReportRow>('SELECT * FROM reports WHERE id = ?', id);
 }
+
+export async function updateReport(id: string, values: { title: string; body: string }) {
+  const db = await getReportDatabase();
+  const updatedAt = new Date().toISOString();
+  const entryCount = values.body.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length;
+
+  await db.runAsync(
+    'UPDATE reports SET title = ?, body = ?, entryCount = ?, updatedAt = ? WHERE id = ?',
+    values.title.trim() || 'Raport',
+    values.body.trim(),
+    entryCount,
+    updatedAt,
+    id
+  );
+
+  return getReportById(id);
+}
