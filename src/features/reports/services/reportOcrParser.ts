@@ -141,12 +141,10 @@ function detectRange(line: string, unitType: ParsedReportEntry['unitType']) {
     return normalizeRange(Number(bbRange[1]), Number(bbRange[2] ?? bbRange[1]), 'bb-range');
   }
 
-  if (unitType === 'PALETY') {
-    const plainRange = line.match(/\b0*(\d{1,4})\s*(?:-|do)\s*0*(\d{1,4})\b/i);
+  const plainRange = line.match(/\b0*(\d{1,4})\s*(?:-|do)\s*0*(\d{1,4})\b/i);
 
-    if (plainRange?.[1] && plainRange[2]) {
-      return normalizeRange(Number(plainRange[1]), Number(plainRange[2]), 'plain-range');
-    }
+  if (plainRange?.[1] && plainRange[2]) {
+    return normalizeRange(Number(plainRange[1]), Number(plainRange[2]), unitType === 'PALETY' ? 'plain-range' : 'bb-range');
   }
 
   return null;

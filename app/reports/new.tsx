@@ -36,6 +36,9 @@ export default function NewReportScreen() {
   const [parsedEntries, setParsedEntries] = useState<ParsedReportEntry[]>([]);
   const [draftEntries, setDraftEntries] = useState<ReportDraftEntry[]>([]);
   const [manualText, setManualText] = useState('');
+  const filledShifts = shiftNumbers.filter((shiftNumber) => hasEntriesForShift(draftEntries, shiftNumber));
+  const missingShifts = shiftNumbers.filter((shiftNumber) => !hasEntriesForShift(draftEntries, shiftNumber));
+  const canGenerateReport = missingShifts.length === 0;
 
   async function openCamera() {
     if (!permission?.granted) {
@@ -131,6 +134,11 @@ export default function NewReportScreen() {
   async function saveReport() {
     if (draftEntries.length === 0) {
       Alert.alert('Brak wpisów', 'Dodaj pozycje raportu ze zdjęcia albo ręcznie.');
+      return;
+    }
+
+    if (!canGenerateReport) {
+      Alert.alert('Uzupełnij wszystkie zmiany', `Brakuje danych dla: ${missingShifts.map((shiftNumber) => `Zmiana ${shiftNumber}`).join(', ')}.`);
       return;
     }
 
@@ -332,14 +340,26 @@ export default function NewReportScreen() {
               <Text style={styles.entryTitle}>{formatParsedEntryForReport(entry.parsedEntry)}</Text>
             </Card>
           ))}
-          <Pressable onPress={saveReport} style={styles.primaryButton}>
+          <Card style={styles.progressCard}>
+            <Text style={styles.progressTitle}>Uzupełnione zmiany: {filledShifts.length}/3</Text>
+            <Text style={styles.progressText}>
+              {canGenerateReport
+                ? 'Wszystkie zmiany są uzupełnione. Możesz wygenerować i zapisać raport.'
+                : `Brakuje: ${missingShifts.map((shiftNumber) => `Zmiana ${shiftNumber}`).join(', ')}.`}
+            </Text>
+          </Card>
+          <Pressable disabled={!canGenerateReport} onPress={saveReport} style={[styles.primaryButton, !canGenerateReport && styles.disabled]}>
             <Ionicons name="save-outline" size={20} color="#ffffff" />
-            <Text style={styles.primaryText}>Generuj i zapisz raport</Text>
+            <Text style={styles.primaryText}>{canGenerateReport ? 'Generuj i zapisz raport' : 'Uzupełnij zmiany 1, 2 i 3'}</Text>
           </Pressable>
         </View>
       )}
     </AppScreen>
   );
+}
+
+function hasEntriesForShift(entries: ReportDraftEntry[], shiftNumber: ReportShiftNumber) {
+  return entries.some((entry) => entry.shiftNumber === shiftNumber);
 }
 
 function ShiftSelector({
@@ -530,6 +550,21 @@ const styles = StyleSheet.create({
     color: liderColors.muted,
     fontSize: 11,
     fontWeight: '800',
+  },
+  progressCard: {
+    gap: 5,
+    padding: 12,
+  },
+  progressTitle: {
+    color: liderColors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  progressText: {
+    color: liderColors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   emptyCard: {
     minHeight: 92,
