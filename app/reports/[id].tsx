@@ -39,6 +39,28 @@ export default function ReportDetailsScreen() {
     Alert.alert('Skopiowano raport', 'Cały gotowy raport został skopiowany do schowka.');
   }
 
+  function confirmDeleteReport() {
+    if (!report) {
+      return;
+    }
+
+    Alert.alert(
+      'Usunąć raport?',
+      'Raport zostanie trwale usunięty. Tej operacji nie da się cofnąć.',
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: 'Usuń',
+          style: 'destructive',
+          onPress: async () => {
+            await reportRepository.deleteReport(report.id);
+            router.replace('/reports' as never);
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <AppScreen title="Raport" leftIcon="chevron-back" onLeftPress={() => router.back()}>
       {isLoading ? (
@@ -72,6 +94,13 @@ export default function ReportDetailsScreen() {
               <Text style={styles.primaryText}>Kopiuj raport</Text>
             </Pressable>
           </View>
+
+          <EmptySpacer height={10} />
+
+          <Pressable onPress={confirmDeleteReport} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={18} color={liderColors.red} />
+            <Text style={styles.deleteText}>Usuń raport</Text>
+          </Pressable>
 
           <EmptySpacer height={18} />
 
@@ -148,6 +177,23 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     color: liderColors.blue,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  deleteButton: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,92,66,0.35)',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,92,66,0.1)',
+    paddingHorizontal: 12,
+  },
+  deleteText: {
+    color: liderColors.red,
     fontSize: 13,
     fontWeight: '900',
   },

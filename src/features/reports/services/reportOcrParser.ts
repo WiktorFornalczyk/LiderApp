@@ -8,8 +8,14 @@ export type ParsedReportEntry = {
   rangeFrom: number | null;
   rangeTo: number | null;
   yardText: string | null;
+  temperatures: ReportTemperaturePoint[];
   confidence: number;
   requiresReview: boolean;
+};
+
+export type ReportTemperaturePoint = {
+  bbNumber: number;
+  value: string;
 };
 
 type ParsedLine = {
@@ -47,6 +53,7 @@ export function parseSingleReportLine(line: string): ParsedReportEntry {
     rangeFrom: range?.from ?? null,
     rangeTo: range?.to ?? null,
     yardText,
+    temperatures: detectTemperatures(normalized),
     confidence: 0,
     requiresReview: false,
   };
@@ -156,6 +163,23 @@ function normalizeRange(from: number, to: number, source: 'bb-range' | 'plain-ra
 function detectYardText(line: string) {
   const match = line.match(/\bplac\s*([0-9A-ZĄĆĘŁŃÓŚŹŻ-]+)\b/i);
   return match?.[1] ? `plac ${match[1]}` : null;
+}
+
+function detectTemperatures(line: string): ReportTemperaturePoint[] {
+  const temperatures: ReportTemperaturePoint[] = [];
+  const labeledPattern = /(?:BB\s*)?0*(\d{1,4})\s*[:=\-]\s*(-?\d+(?:[.,]\d+)?)\s*(?:°?\s*C)?/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = labeledPattern.exec(line)) !== null) {
+    const bbNumber = Number(match[1]);
+    const value = match[2]?.replace(',', '.');
+
+    if (Number.isFinite(bbNumber) && value) {
+      temperatures.push({ bbNumber, value });
+    }
+  }
+
+  return temperatures;
 }
 
 function calculateConfidence(values: {

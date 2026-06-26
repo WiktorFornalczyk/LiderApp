@@ -81,3 +81,12 @@ export async function updateReport(id: string, values: { title: string; body: st
 
   return getReportById(id);
 }
+
+export async function deleteReport(id: string) {
+  const db = await getReportDatabase();
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM report_entries WHERE reportId = ?', id);
+    await db.runAsync('DELETE FROM reports WHERE id = ?', id);
+  });
+}

@@ -21,9 +21,11 @@ export async function buildFormattedReport(entries: ReportDraftEntry[], temperat
   const sections: string[] = [displayDate];
 
   for (const shiftNumber of reportShiftNumbers) {
+    const shiftEntries = entries.filter((entry) => entry.shiftNumber === shiftNumber);
+
     sections.push(`Zmiana ${shiftNumber}`);
-    sections.push(...formatProductionLines(entries.filter((entry) => entry.shiftNumber === shiftNumber)));
-    sections.push(`Temperatura: ${temperatures[shiftNumber].trim() || '(...)'}BB-(...)°C`);
+    sections.push(...formatProductionLines(shiftEntries));
+    sections.push(formatTemperatureLine(shiftEntries, temperatures[shiftNumber]));
     sections.push('');
   }
 
@@ -52,6 +54,45 @@ function formatProductionLines(entries: ReportDraftEntry[]) {
 
     return `-${batchNumber} BB${rangeFrom}-${rangeTo}, pobrano próbki, wywieziono na plac nr ${yardNumber}`;
   });
+}
+
+function formatTemperatureLine(entries: ReportDraftEntry[], manualTemperature: string) {
+  const points = entries.flatMap((entry) => buildTemperaturePoints(entry.parsedEntry, manualTemperature));
+
+  if (points.length === 0) {
+    return 'Temperatura: BB(...) (...)°C';
+  }
+
+  return `Temperatura: ${points.join(', ')}`;
+}
+
+function buildTemperaturePoints(entry: ParsedReportEntry, manualTemperature: string) {
+  if (entry.rangeFrom === null || entry.rangeTo === null) {
+    return [];
+  }
+
+  const temperatureByBb = new Map(entry.temperatures.map((point) => [point.bbNumber, point.value]));
+  const fallbackTemperature = manualTemperature.trim();
+
+  return getTemperatureBbNumbers(entry.rangeFrom, entry.rangeTo).map((bbNumber) => {
+    const temperature = temperatureByBb.get(bbNumber) ?? fallbackTemperature;
+    return `BB${bbNumber} ${temperature || '(...)'}°C`;
+  });
+}
+
+function getTemperatureBbNumbers(from: number, to: number) {
+  const start = Math.min(from, to);
+  const end = Math.max(from, to);
+  const numbers = [start];
+  const firstStep = Math.ceil(start / 10) * 10;
+
+  for (let bbNumber = firstStep; bbNumber <= end; bbNumber += 10) {
+    if (bbNumber !== start) {
+      numbers.push(bbNumber);
+    }
+  }
+
+  return numbers;
 }
 
 async function buildHourlySummary(reportDate: string) {

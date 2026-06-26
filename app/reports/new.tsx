@@ -216,6 +216,9 @@ export default function NewReportScreen() {
                 <Text style={styles.entryMeta}>
                   Pewność: {Math.round(entry.confidence * 100)}%{entry.requiresReview ? ' · do sprawdzenia' : ''}
                 </Text>
+                {entry.temperatures.length > 0 ? (
+                  <Text style={styles.entryMeta}>Temperatury: {entry.temperatures.map((point) => `BB${point.bbNumber} ${point.value}°C`).join(', ')}</Text>
+                ) : null}
               </Card>
             ))}
           </View>
@@ -288,7 +291,7 @@ export default function NewReportScreen() {
 
       <EmptySpacer height={18} />
 
-      <SectionTitle>Temperatury</SectionTitle>
+      <SectionTitle>Temperatura domyślna</SectionTitle>
       <Card style={styles.temperatureCard}>
         {shiftNumbers.map((shiftNumber) => (
           <View key={shiftNumber} style={styles.temperatureRow}>
@@ -296,7 +299,7 @@ export default function NewReportScreen() {
             <TextInput
               keyboardType="numbers-and-punctuation"
               onChangeText={(value) => updateTemperature(shiftNumber, value)}
-              placeholder="(...)"
+              placeholder="Gdy OCR nie odczyta temperatur"
               placeholderTextColor={liderColors.dim}
               style={styles.temperatureInput}
               value={temperatures[shiftNumber]}
