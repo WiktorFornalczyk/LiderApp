@@ -83,6 +83,32 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
     setMode(nextMode);
   }
 
+  function goBackFromMode() {
+    if (mode === 'create' || mode === 'photo' || mode === 'yards') {
+      setMode('list');
+      return;
+    }
+
+    if (mode === 'edit') {
+      setMode('details');
+      return;
+    }
+
+    if (mode === 'details') {
+      setMode('list');
+      return;
+    }
+
+    if (mode === 'yardDetails') {
+      setMode('yards');
+      return;
+    }
+
+    if (mode === 'yardEdit') {
+      setMode(selectedYard ? 'yardDetails' : 'yards');
+    }
+  }
+
   const groupedRecords = useMemo(() => {
     return yards.map((yard) => ({
       yard,
@@ -91,7 +117,10 @@ export function BbListScreen({ initialMode = 'list' }: { initialMode?: ScreenMod
   }, [records, yards]);
 
   return (
-    <AppScreen title="BB" rightSlot={<HeaderActions onAdd={() => setMode('create')} onPhoto={() => setMode('photo')} />}>
+    <AppScreen
+      title="BB"
+      onLeftPress={mode === 'list' ? undefined : goBackFromMode}
+      rightSlot={<HeaderActions onAdd={() => setMode('create')} onPhoto={() => setMode('photo')} />}>
       <View style={styles.modeTabs}>
         <ModeTab label="BB" selected={mode === 'list'} onPress={() => setMode('list')} />
         <ModeTab label="Place" selected={mode === 'yards'} onPress={() => setMode('yards')} />

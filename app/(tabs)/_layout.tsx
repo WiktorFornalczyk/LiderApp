@@ -44,10 +44,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="raporty"
+        options={{
+          title: 'Raporty',
+          tabBarIcon: ({ color }) => <TabIcon name="reader-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="grafik"
         options={{
-          title: 'Grafik',
-          tabBarIcon: ({ color }) => <TabIcon name="calendar-outline" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

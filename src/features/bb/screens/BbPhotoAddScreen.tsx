@@ -35,7 +35,7 @@ export function BbPhotoAddScreen({
     try {
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.9,
+        quality: 1,
         skipProcessing: false,
       });
 

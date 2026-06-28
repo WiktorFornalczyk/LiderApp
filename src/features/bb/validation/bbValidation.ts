@@ -1,5 +1,7 @@
 import { BbInput, BbValidationErrors } from '../types/bbTypes';
 
+const commonCarbonGrades = new Set(['330', '339', '326', '375']);
+
 export const bbErrorMessages = {
   nrPartiiRequired: 'Podaj numer partii.',
   nrPartiiDigits: 'Numer partii może zawierać tylko cyfry.',
@@ -23,12 +25,19 @@ function normalizeText(value: string | null | undefined) {
   return value?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
+function normalizeCarbonType(value: string) {
+  const normalized = normalizeText(value).toUpperCase().replace(/\s+/g, '');
+  const grade = normalized.startsWith('N') ? normalized.slice(1) : normalized;
+
+  return commonCarbonGrades.has(grade) ? `N${grade}` : normalizeText(value);
+}
+
 export function sanitizeBbInput(input: BbInput): BbInput {
   return {
     ...input,
     placId: normalizeText(input.placId),
     nrPartii: normalizeText(input.nrPartii),
-    rodzajSadzy: normalizeText(input.rodzajSadzy),
+    rodzajSadzy: normalizeCarbonType(input.rodzajSadzy),
     bbOd: typeof input.bbOd === 'number' ? input.bbOd : normalizeText(input.bbOd),
     bbDo: typeof input.bbDo === 'number' ? input.bbDo : normalizeText(input.bbDo),
     paleta: input.paleta ?? null,

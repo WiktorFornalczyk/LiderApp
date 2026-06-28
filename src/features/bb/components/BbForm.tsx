@@ -19,7 +19,7 @@ const emptyInput: BbInput = {
   uwagi: null,
 };
 
-const quickCarbonTypes = ['N326', 'N375', 'N339'];
+const quickCarbonTypes = ['N330', 'N339', 'N326', 'N375'];
 
 export function BbForm({
   yards,

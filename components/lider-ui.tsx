@@ -76,7 +76,7 @@ type AppScreenProps = PropsWithChildren<{
 export function AppScreen({
   title,
   subtitle,
-  leftIcon = 'menu-outline',
+  leftIcon,
   onLeftPress,
   rightIcon,
   rightSlot,
@@ -90,7 +90,9 @@ export function AppScreen({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
-  const openLeftMenu = leftIcon === 'menu-outline' && !onLeftPress;
+  const router = useRouter();
+  const resolvedLeftIcon = leftIcon ?? 'chevron-back';
+  const openLeftMenu = resolvedLeftIcon === 'menu-outline' && !onLeftPress;
   const openNotifications = rightIcon === 'notifications-outline' && !rightSlot;
 
   const loadNotifications = useCallback(async () => {
@@ -121,11 +123,24 @@ export function AppScreen({
     loadNotifications();
   }
 
+  function goBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/(tabs)' as never);
+  }
+
   return (
     <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <View style={[styles.phoneFrame, { backgroundColor: colors.bg }]}>
         <View style={[styles.header, { borderBottomColor: colors.borderSoft }]}>
-          <IconButton name={leftIcon} onPress={openLeftMenu ? () => setIsMenuOpen(true) : onLeftPress} color={colors.text} />
+          <IconButton
+            name={resolvedLeftIcon}
+            onPress={openLeftMenu ? () => setIsMenuOpen(true) : onLeftPress ?? goBack}
+            color={colors.text}
+          />
           <View style={styles.headerTitleWrap}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
             {subtitle ? <Text style={[styles.headerSubtitle, { color: colors.dim }]}>{subtitle}</Text> : null}

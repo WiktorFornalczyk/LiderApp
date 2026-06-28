@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -19,6 +18,7 @@ import {
   parseReportOcrText,
 } from '@/src/features/reports/services/reportOcrParser';
 import * as reportRepository from '@/src/features/reports/services/reportRepository';
+import { recognizeImageText } from '@/src/features/ocr/services/textRecognitionService';
 
 type ReportMode = 'start' | 'camera' | 'preview' | 'manual';
 
@@ -61,11 +61,10 @@ export default function NewReportScreen() {
     try {
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.9,
+        quality: 1,
         skipProcessing: false,
       });
-      const result = await TextRecognition.recognize(photo.uri);
-      const nextRawText = result.text?.trim() ?? '';
+      const { rawText: nextRawText } = await recognizeImageText(photo.uri);
       setRawText(nextRawText);
       setParsedEntries(parseReportOcrText(nextRawText));
       setMode('preview');

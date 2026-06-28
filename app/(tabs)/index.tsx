@@ -81,7 +81,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <AppScreen title="LiderApp" rightIcon="notifications-outline">
+    <AppScreen title="LiderApp" leftIcon="menu-outline" rightIcon="notifications-outline">
       <SectionTitle>Szybkie akcje</SectionTitle>
       <View style={styles.quickGrid}>
         {quickActions.map((action) => (

@@ -1,32 +1,18 @@
-import TextRecognition from '@react-native-ml-kit/text-recognition';
-
+import {
+  getFullText,
+  getLines,
+  getReadableOcrError,
+  OcrRecognitionResult,
+  OcrTextLine,
+  recognizeImageText,
+} from '@/src/features/ocr/services/textRecognitionService';
 import { BbInput, BbLine, BbOcrResult } from '../types/bbTypes';
-
-type OcrFrame = {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
-
-type OcrTextLine = {
-  text?: string;
-  frame?: OcrFrame;
-  bounding?: OcrFrame;
-};
-
-type OcrTextBlock = OcrTextLine & {
-  lines?: OcrTextLine[];
-};
-
-type OcrRecognitionResult = {
-  text?: string;
-  blocks?: OcrTextBlock[];
-};
 
 type RecognizeBbPhotoOptions = {
   maxTextY?: number;
 };
+
+const commonCarbonGrades = ['330', '339', '326', '375'];
 
 export function extractBatchNumberFromText(text: string) {
   const normalized = text.replace(/\s+/g, ' ');
@@ -49,7 +35,13 @@ export function extractCarbonTypeFromText(text: string) {
   const normalized = text.replace(/\s+/g, ' ');
   const match = normalized.match(/\bN\s*([A-Z]?\d{2,}[A-Z0-9]*)\b/i);
 
-  return match?.[1] ? `N${match[1].toUpperCase()}` : null;
+  if (match?.[1]) {
+    return `N${match[1].toUpperCase()}`;
+  }
+
+  const commonGrade = commonCarbonGrades.find((grade) => new RegExp(`(^|\\D)${grade}(\\D|$)`).test(normalized));
+
+  return commonGrade ? `N${commonGrade}` : null;
 }
 
 export function extractBbRangeFromText(text: string) {
@@ -103,9 +95,15 @@ export function buildSuggestedBbValues(rawText: string): Partial<BbInput> {
 
 export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPhotoOptions = {}): Promise<BbOcrResult> {
   try {
-    const result = await TextRecognition.recognize(imageUri) as OcrRecognitionResult;
-    const rawText = getTextAboveLine(result, options.maxTextY);
-    return buildOcrResultFromText(rawText, imageUri);
+    const { rawText: fullText, result } = await recognizeImageText(imageUri);
+    const guidedText = getTextAboveLine(result, options.maxTextY);
+    const guidedResult = buildOcrResultFromText(guidedText, imageUri);
+
+    if (guidedText && hasSuggestedValues(guidedResult)) {
+      return guidedResult;
+    }
+
+    return buildOcrResultFromText(fullText || guidedText, imageUri);
   } catch (error) {
     return {
       imageUri,
@@ -115,7 +113,7 @@ export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPho
       suggestedPlacName: null,
       error:
         error instanceof Error
-          ? error.message
+          ? getReadableOcrError(error)
           : 'Nie udało się odczytać tekstu ze zdjęcia. Możesz wprowadzić dane ręcznie.',
     };
   }
@@ -123,29 +121,40 @@ export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPho
 
 function getTextAboveLine(result: OcrRecognitionResult, maxTextY?: number) {
   if (!maxTextY || !result.blocks?.length) {
-    return result.text ?? '';
+    return getFullText(result);
   }
 
-  const lines = result.blocks.flatMap((block) => block.lines?.length ? block.lines : [block]);
-  const selectedLines = lines
+  const selectedLines = getLines(result)
     .filter((line) => isLineAboveCutoff(line, maxTextY))
     .map((line) => line.text?.trim())
     .filter(Boolean);
 
-  return selectedLines.length > 0 ? selectedLines.join('\n') : result.text ?? '';
+  return selectedLines.length > 0 ? selectedLines.join('\n') : getFullText(result);
 }
 
 function isLineAboveCutoff(line: OcrTextLine, maxTextY: number) {
   const frame = line.frame ?? line.bounding;
+  const frameTop = frame?.top ?? frame?.y;
 
-  if (!frame || typeof frame.y !== 'number') {
+  if (!frame || typeof frameTop !== 'number') {
     return true;
   }
 
   const height = typeof frame.height === 'number' ? frame.height : 0;
-  const lineCenterY = frame.y + height / 2;
+  const lineCenterY = frameTop + height / 2;
 
   return lineCenterY <= maxTextY;
+}
+
+function hasSuggestedValues(result: BbOcrResult) {
+  return Boolean(
+    result.suggestedPlacName ||
+      result.suggestedValues.nrPartii ||
+      result.suggestedValues.rodzajSadzy ||
+      result.suggestedValues.bbOd ||
+      result.suggestedValues.bbDo ||
+      result.suggestedValues.linia
+  );
 }
 
 export function buildOcrResultFromText(rawText: string, imageUri: string | null = null): BbOcrResult {

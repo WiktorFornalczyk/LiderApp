@@ -25,7 +25,7 @@ export default function ReportsScreen() {
   );
 
   return (
-    <AppScreen title="Raporty" leftIcon="chevron-back" onLeftPress={() => router.back()}>
+    <AppScreen title="Raporty">
       <SectionTitle>Raporty</SectionTitle>
       <Card style={styles.card}>
         <Text style={styles.title}>Nowy raport zmianowy</Text>

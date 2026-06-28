@@ -24,6 +24,7 @@ type ParsedLine = {
 };
 
 let nextEntryId = 0;
+const commonCarbonGrades = ['330', '339', '326', '375'];
 
 export function parseReportOcrText(text: string): ParsedReportEntry[] {
   return text
@@ -39,7 +40,7 @@ export function parseSingleReportLine(line: string): ParsedReportEntry {
   const parsedLine = detectLine(normalized);
   const unitType = detectUnitType(normalized);
   const range = detectRange(normalized, unitType);
-  const carbonType = normalized.match(/\bN\s*([A-Z]?\d{2,}[A-Z0-9]*)\b/i)?.[1] ?? null;
+  const carbonType = detectCarbonType(normalized);
   const batchNumber = normalized.match(/\bP\s*(\d{4,})\b/i)?.[1] ?? null;
   const yardText = detectYardText(normalized);
 
@@ -47,7 +48,7 @@ export function parseSingleReportLine(line: string): ParsedReportEntry {
     id: createEntryId(),
     originalText,
     line: parsedLine.value,
-    carbonType: carbonType ? `N${carbonType.toUpperCase()}` : null,
+    carbonType,
     batchNumber: batchNumber ? `P${batchNumber}` : null,
     unitType,
     rangeFrom: range?.from ?? null,
@@ -148,6 +149,18 @@ function detectRange(line: string, unitType: ParsedReportEntry['unitType']) {
   }
 
   return null;
+}
+
+function detectCarbonType(line: string) {
+  const labelledMatch = line.match(/\bN\s*([A-Z]?\d{2,}[A-Z0-9]*)\b/i);
+
+  if (labelledMatch?.[1]) {
+    return `N${labelledMatch[1].toUpperCase()}`;
+  }
+
+  const commonGrade = commonCarbonGrades.find((grade) => new RegExp(`(^|\\D)${grade}(\\D|$)`).test(line));
+
+  return commonGrade ? `N${commonGrade}` : null;
 }
 
 function normalizeRange(from: number, to: number, source: 'bb-range' | 'plain-range') {

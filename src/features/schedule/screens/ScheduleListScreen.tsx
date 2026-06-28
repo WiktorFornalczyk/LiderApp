@@ -168,7 +168,7 @@ export function ScheduleListScreen() {
   }
 
   return (
-    <AppScreen title="Grafik" rightIcon="calendar-outline" wide>
+    <AppScreen title="Grafik" onLeftPress={mode === 'employees' ? () => setMode('schedule') : undefined} rightIcon="calendar-outline" wide>
       <View style={styles.modeTabs}>
         <ModeTab label="Grafik" selected={mode === 'schedule'} onPress={() => setMode('schedule')} />
         <ModeTab label="Pracownicy" selected={mode === 'employees'} onPress={() => setMode('employees')} />
