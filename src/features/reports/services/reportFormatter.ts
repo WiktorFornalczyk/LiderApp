@@ -18,9 +18,10 @@ export async function buildFormattedReport(entries: ReportDraftEntry[], temperat
   const reportDate = getYesterdayIsoDate();
   const displayDate = formatDisplayDate(reportDate);
   const hourlySummary = await buildHourlySummary(reportDate);
+  const includedShiftNumbers = getIncludedShiftNumbers(entries);
   const sections: string[] = [displayDate];
 
-  for (const shiftNumber of reportShiftNumbers) {
+  for (const shiftNumber of includedShiftNumbers) {
     const shiftEntries = entries.filter((entry) => entry.shiftNumber === shiftNumber);
 
     sections.push(`Zmiana ${shiftNumber}`);
@@ -32,12 +33,16 @@ export async function buildFormattedReport(entries: ReportDraftEntry[], temperat
   sections.push('Raport godzinowy:');
   sections.push(displayDate);
 
-  for (const shiftNumber of reportShiftNumbers) {
+  for (const shiftNumber of includedShiftNumbers) {
     const summary = hourlySummary[shiftNumber];
     sections.push(`Zmiana ${shiftNumber} - ${summary.peopleCount} osób ~ ${summary.hours} godzin`);
   }
 
   return sections.join('\n').trim();
+}
+
+function getIncludedShiftNumbers(entries: ReportDraftEntry[]) {
+  return reportShiftNumbers.filter((shiftNumber) => entries.some((entry) => entry.shiftNumber === shiftNumber));
 }
 
 function formatProductionLines(entries: ReportDraftEntry[]) {

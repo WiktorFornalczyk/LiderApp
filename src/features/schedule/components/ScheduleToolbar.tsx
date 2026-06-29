@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 
 import { liderColors } from '@/components/lider-ui';
 import { ScheduleWeekInput } from '../types/scheduleTypes';
@@ -45,9 +45,9 @@ export function ScheduleToolbar({
       </View>
 
       <View style={styles.navRow}>
-        <ToolButton icon="chevron-back" label="Poprzedni" onPress={onPreviousWeek} tone="neutral" />
-        <ToolButton icon="calendar-outline" label="Dzisiaj" onPress={onCurrentWeek} tone="neutral" />
-        <ToolButton icon="chevron-forward" label="Następny" onPress={onNextWeek} tone="neutral" />
+        <ToolButton icon="chevron-back" label="Poprzedni" onPress={onPreviousWeek} style={styles.navSideButton} tone="neutral" />
+        <ToolButton icon="calendar-outline" label="Dzisiaj" onPress={onCurrentWeek} style={styles.navTodayButton} tone="neutral" />
+        <ToolButton icon="chevron-forward" label="Następny" onPress={onNextWeek} style={styles.navSideButton} tone="neutral" />
       </View>
 
       <Pressable onPress={onCreate} style={styles.createButton}>
@@ -118,12 +118,14 @@ function ToolButton({
   label,
   onPress,
   disabled,
+  style,
   tone = 'blue',
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
   tone?: 'blue' | 'green' | 'amber' | 'red' | 'neutral';
 }) {
   const color =
@@ -141,9 +143,9 @@ function ToolButton({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      style={[styles.toolButton, disabled && styles.disabledButton]}>
+      style={[styles.toolButton, style, disabled && styles.disabledButton]}>
       <Ionicons name={icon} size={18} color={disabled ? liderColors.dim : color} />
-      <Text style={[styles.toolButtonText, { color: disabled ? liderColors.dim : color }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.toolButtonText, { color: disabled ? liderColors.dim : color }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -179,6 +181,18 @@ const styles = StyleSheet.create({
   navRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  navSideButton: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: 6,
+  },
+  navTodayButton: {
+    width: 92,
+    flexGrow: 0,
+    flexBasis: 'auto',
+    paddingHorizontal: 6,
   },
   createButton: {
     minHeight: 52,

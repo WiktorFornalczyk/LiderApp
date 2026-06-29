@@ -38,8 +38,7 @@ export default function NewReportScreen() {
   const [manualText, setManualText] = useState('');
   const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
   const filledShifts = shiftNumbers.filter((shiftNumber) => hasEntriesForShift(draftEntries, shiftNumber));
-  const missingShifts = shiftNumbers.filter((shiftNumber) => !hasEntriesForShift(draftEntries, shiftNumber));
-  const canGenerateReport = missingShifts.length === 0;
+  const canGenerateReport = draftEntries.length > 0;
 
   async function openCamera() {
     if (!permission?.granted) {
@@ -134,11 +133,6 @@ export default function NewReportScreen() {
   async function saveReport() {
     if (draftEntries.length === 0) {
       Alert.alert('Brak wpisów', 'Dodaj pozycje raportu ze zdjęcia albo ręcznie.');
-      return;
-    }
-
-    if (!canGenerateReport) {
-      Alert.alert('Uzupełnij wszystkie zmiany', `Brakuje danych dla: ${missingShifts.map((shiftNumber) => `Zmiana ${shiftNumber}`).join(', ')}.`);
       return;
     }
 
@@ -327,14 +321,12 @@ export default function NewReportScreen() {
           <Card style={styles.progressCard}>
             <Text style={styles.progressTitle}>Uzupełnione zmiany: {filledShifts.length}/3</Text>
             <Text style={styles.progressText}>
-              {canGenerateReport
-                ? 'Wszystkie zmiany są uzupełnione. Możesz wygenerować i zapisać raport.'
-                : `Brakuje: ${missingShifts.map((shiftNumber) => `Zmiana ${shiftNumber}`).join(', ')}.`}
+              Raport zostanie wygenerowany tylko dla zmian: {filledShifts.map((shiftNumber) => `Zmiana ${shiftNumber}`).join(', ')}.
             </Text>
           </Card>
           <Pressable disabled={!canGenerateReport} onPress={saveReport} style={[styles.primaryButton, !canGenerateReport && styles.disabled]}>
             <Ionicons name="save-outline" size={20} color="#ffffff" />
-            <Text style={styles.primaryText}>{canGenerateReport ? 'Generuj i zapisz raport' : 'Uzupełnij zmiany 1, 2 i 3'}</Text>
+            <Text style={styles.primaryText}>Generuj i zapisz raport</Text>
           </Pressable>
         </View>
       )}
