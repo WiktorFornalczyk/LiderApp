@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppScreen, Card, EmptySpacer, liderColors, SectionTitle } from '@/components/lider-ui';
+import { AppScreen, Card, liderColors, SectionTitle } from '@/components/lider-ui';
 import * as reportRepository from '@/src/features/reports/services/reportRepository';
 import { Report } from '@/src/features/reports/types/reportTypes';
 
@@ -25,21 +25,13 @@ export default function ReportsScreen() {
   );
 
   return (
-    <AppScreen title="Raporty">
-      <SectionTitle>Raporty</SectionTitle>
-      <Card style={styles.card}>
-        <Text style={styles.title}>Nowy raport zmianowy</Text>
-        <Text style={styles.text}>
-          Utwórz raport ręcznie albo przygotuj go z odczytu OCR po zrobieniu zdjęcia kartki.
-        </Text>
-        <Pressable onPress={() => router.push('/reports/new' as never)} style={styles.primaryButton}>
-          <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
-          <Text style={styles.primaryText}>Nowy raport</Text>
+    <AppScreen
+      title="Raporty"
+      rightSlot={
+        <Pressable onPress={() => router.push('/reports/new' as never)} style={styles.headerButton}>
+          <Ionicons name="add" size={24} color={liderColors.text} />
         </Pressable>
-      </Card>
-
-      <EmptySpacer height={18} />
-
+      }>
       <SectionTitle>Ostatnie raporty</SectionTitle>
       {isLoading ? (
         <Card style={styles.emptyCard}>
@@ -75,34 +67,12 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: 12,
-    padding: 14,
-  },
-  title: {
-    color: liderColors.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  text: {
-    color: liderColors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  primaryButton: {
-    minHeight: 48,
-    flexDirection: 'row',
+  headerButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     borderRadius: 8,
-    backgroundColor: liderColors.blue,
-  },
-  primaryText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '900',
   },
   emptyCard: {
     minHeight: 120,
