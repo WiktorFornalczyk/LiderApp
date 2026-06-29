@@ -95,15 +95,16 @@ export function buildSuggestedBbValues(rawText: string): Partial<BbInput> {
 
 export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPhotoOptions = {}): Promise<BbOcrResult> {
   try {
-    const { rawText: fullText, result } = await recognizeImageText(imageUri);
+    const { rawText: fullText, result, meta } = await recognizeImageText(imageUri);
     const guidedText = getTextAboveLine(result, options.maxTextY);
     const guidedResult = buildOcrResultFromText(guidedText, imageUri);
+    const debugInfo = buildDebugInfo(meta.blockCount, meta.lineCount, meta.attemptedUriCount);
 
     if (guidedText && hasSuggestedValues(guidedResult)) {
-      return guidedResult;
+      return { ...guidedResult, debugInfo };
     }
 
-    return buildOcrResultFromText(fullText || guidedText, imageUri);
+    return { ...buildOcrResultFromText(fullText || guidedText, imageUri), debugInfo };
   } catch (error) {
     return {
       imageUri,
@@ -115,8 +116,13 @@ export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPho
         error instanceof Error
           ? getReadableOcrError(error)
           : 'Nie udało się odczytać tekstu ze zdjęcia. Możesz wprowadzić dane ręcznie.',
+      debugInfo: 'ML Kit nie zwrocil wyniku OCR.',
     };
   }
+}
+
+function buildDebugInfo(blockCount: number, lineCount: number, attemptedUriCount: number) {
+  return `ML Kit: bloki ${blockCount}, linie ${lineCount}, proby pliku ${attemptedUriCount}`;
 }
 
 function getTextAboveLine(result: OcrRecognitionResult, maxTextY?: number) {

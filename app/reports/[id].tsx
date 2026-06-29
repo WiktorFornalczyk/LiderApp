@@ -78,7 +78,7 @@ export default function ReportDetailsScreen() {
           <Card style={styles.headerCard}>
             <Text style={styles.title}>{report.title}</Text>
             <Text style={styles.meta}>
-              {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleString('pl-PL')}
+              {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleDateString('pl-PL')}
             </Text>
           </Card>
 

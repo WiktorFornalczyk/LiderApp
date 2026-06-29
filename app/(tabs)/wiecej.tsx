@@ -20,12 +20,7 @@ import * as bbService from '@/src/features/bb/services/bbService';
 import { BbRecordWithYard } from '@/src/features/bb/types/bbTypes';
 import * as scheduleMaintenanceService from '@/src/features/schedule/services/scheduleMaintenanceService';
 
-type SettingsMode = 'home' | 'archive' | 'import' | 'retention' | 'scheduleRetention' | 'details';
-
-const informationItems: SettingsItem[] = [
-  { label: 'O aplikacji', icon: 'information-circle-outline' },
-  { label: 'Pomoc', icon: 'help-circle-outline' },
-];
+type SettingsMode = 'home' | 'archive' | 'import' | 'retention' | 'scheduleRetention' | 'details' | 'about' | 'help';
 
 type SettingsItem = {
   label: string;
@@ -213,6 +208,84 @@ export default function WiecejScreen() {
     );
   }
 
+  if (mode === 'about') {
+    return (
+      <AppScreen title="O aplikacji" leftIcon="chevron-back" onLeftPress={() => setMode('home')}>
+        <Card style={styles.infoCard}>
+          <Ionicons name="briefcase-outline" size={28} color={liderColors.blue} />
+          <Text style={styles.infoTitle}>LiderApp</Text>
+          <Text style={styles.infoText}>
+            Aplikacja do codziennego prowadzenia BB, placów, grafików, kalendarza, notatek i raportów zmianowych.
+          </Text>
+        </Card>
+
+        <EmptySpacer height={14} />
+
+        <SectionTitle>Co zawiera</SectionTitle>
+        <InfoList
+          items={[
+            'BB: dodawanie partii, zakresów, placów, archiwum i import/eksport danych.',
+            'Grafik: tygodniowy grafik pracowników z eksportem do pliku.',
+            'Raporty: tworzenie raportu zmianowego ręcznie albo ze zdjęcia OCR.',
+            'Kalendarz i notatki: szybkie przypomnienia oraz zapiski z pracy.',
+          ]}
+        />
+
+        <EmptySpacer height={14} />
+
+        <SectionTitle>Dane</SectionTitle>
+        <Card style={styles.infoCard}>
+          <Text style={styles.infoText}>
+            Dane są przechowywane lokalnie w aplikacji. Kopię BB możesz wyeksportować jako JSON w sekcji Dane BB.
+          </Text>
+        </Card>
+      </AppScreen>
+    );
+  }
+
+  if (mode === 'help') {
+    return (
+      <AppScreen title="Pomoc" leftIcon="chevron-back" onLeftPress={() => setMode('home')}>
+        <SectionTitle>Nawigacja</SectionTitle>
+        <InfoList
+          items={[
+            'Dolne menu prowadzi do Dashboardu, BB, Raportów, Notatek i Ustawień.',
+            'Menu w lewym górnym rogu Dashboardu otwiera pełną listę sekcji, w tym Grafik.',
+            'Strzałka w lewym górnym rogu wraca do poprzedniego widoku.',
+          ]}
+        />
+
+        <EmptySpacer height={14} />
+
+        <SectionTitle>OCR</SectionTitle>
+        <InfoList
+          items={[
+            'OCR działa tylko w development build/dev client, nie w zwykłym Expo Go.',
+            'Przed zdjęciem poczekaj chwilę, aż aparat złapie ostrość.',
+            'Tekst powinien być dobrze oświetlony, prosty i możliwie blisko kadru.',
+            'Dla BB aplikacja rozpoznaje najczęstsze gatunki: N330, N339, N326 i N375.',
+            'Jeśli OCR nic nie odczyta, użyj podglądu i popraw dane ręcznie.',
+          ]}
+        />
+
+        <EmptySpacer height={14} />
+
+        <SectionTitle>BB i raporty</SectionTitle>
+        <InfoList
+          items={[
+            'BB zapisuj po wybraniu placu, numeru partii, gatunku sadzy, zakresu BB i linii.',
+            'Raport możesz składać z kilku zdjęć OCR albo z wpisów ręcznych.',
+            'Eksport i import BB znajdziesz w Ustawieniach w sekcji Dane BB.',
+          ]}
+        />
+      </AppScreen>
+    );
+  }
+
+  const informationItems: SettingsItem[] = [
+    { label: 'O aplikacji', icon: 'information-circle-outline', onPress: () => setMode('about') },
+    { label: 'Pomoc', icon: 'help-circle-outline', onPress: () => setMode('help') },
+  ];
   const dataItems: SettingsItem[] = [
     { label: 'Eksportuj dane BB (JSON)', icon: 'download-outline', onPress: handleExport },
     { label: 'Importuj dane BB (JSON)', icon: 'mail-outline', onPress: () => setMode('import') },
@@ -284,6 +357,19 @@ function StateCard({ message, loading }: { message: string; loading?: boolean })
   );
 }
 
+function InfoList({ items }: { items: string[] }) {
+  return (
+    <Card style={styles.infoList}>
+      {items.map((item, index) => (
+        <View key={item} style={[styles.infoRow, index > 0 && styles.rowBorder]}>
+          <Ionicons name="checkmark-circle-outline" size={18} color={liderColors.green} />
+          <Text style={styles.infoRowText}>{item}</Text>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   settingsCard: {
     overflow: 'hidden',
@@ -335,6 +421,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  infoCard: {
+    gap: 10,
+    padding: 14,
+  },
+  infoTitle: {
+    color: liderColors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  infoText: {
+    color: liderColors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  infoList: {
+    overflow: 'hidden',
+  },
+  infoRow: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  infoRowText: {
+    flex: 1,
+    color: liderColors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   retentionCard: {
     gap: 12,

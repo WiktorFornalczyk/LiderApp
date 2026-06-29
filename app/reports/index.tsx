@@ -59,7 +59,7 @@ export default function ReportsScreen() {
                   <View style={styles.reportHeaderText}>
                     <Text style={styles.reportTitle}>{report.title}</Text>
                     <Text style={styles.reportMeta}>
-                      {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleString('pl-PL')}
+                      {report.entryCount} pozycji · {new Date(report.createdAt).toLocaleDateString('pl-PL')}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={liderColors.muted} />

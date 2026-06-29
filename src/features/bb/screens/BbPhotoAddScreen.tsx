@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -26,6 +26,7 @@ export function BbPhotoAddScreen({
   const [suggestedValues, setSuggestedValues] = useState<Partial<BbInput>>({});
   const [placName, setPlacName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
 
   async function takePhotoAndRunOcr() {
     if (!cameraRef.current || isProcessing) {
@@ -36,7 +37,7 @@ export function BbPhotoAddScreen({
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1,
-        skipProcessing: false,
+        skipProcessing: true,
       });
 
       const nextResult = await ocrService.recognizeBbPhoto(photo.uri, {
@@ -50,8 +51,11 @@ export function BbPhotoAddScreen({
         ...(matchedPlacId ? { placId: matchedPlacId } : {}),
       });
 
-      if (nextResult.error) {
-        Alert.alert('OCR nie odczytał tekstu', 'Możesz poprawić dane ręcznie na ekranie podglądu.');
+      if (nextResult.error || !nextResult.rawText.trim()) {
+        Alert.alert(
+          'OCR nie odczytał tekstu',
+          [nextResult.error ?? 'Możesz poprawić dane ręcznie na ekranie podglądu.', nextResult.debugInfo].filter(Boolean).join('\n')
+        );
       }
     } catch {
       Alert.alert('Nie udało się zrobić zdjęcia.', 'Spróbuj ponownie albo wpisz dane ręcznie.');
@@ -68,6 +72,10 @@ export function BbPhotoAddScreen({
     setPlacName(value);
     const matchedPlacId = getMatchedYardId(value, yards);
     patchSuggestedValues({ placId: matchedPlacId ?? '' });
+  }
+
+  function toggleCameraFacing() {
+    setCameraFacing((current) => (current === 'back' ? 'front' : 'back'));
   }
 
   if (!permission) {
@@ -138,7 +146,7 @@ export function BbPhotoAddScreen({
       </Card>
 
       <View style={styles.cameraFrame}>
-        <CameraView ref={cameraRef} facing="back" style={styles.camera} />
+        <CameraView ref={cameraRef} autofocus="on" facing={cameraFacing} style={styles.camera} />
         <View pointerEvents="none" style={styles.readAreaOverlay}>
           <View style={styles.readAreaShade} />
           <View style={styles.guideLineWrap}>
@@ -149,6 +157,9 @@ export function BbPhotoAddScreen({
           </View>
           <View style={styles.ignoredAreaShade} />
         </View>
+        <Pressable disabled={isProcessing} onPress={toggleCameraFacing} style={styles.rotateButton}>
+          <Ionicons name="camera-reverse-outline" size={22} color="#ffffff" />
+        </Pressable>
         {isProcessing ? (
           <View style={styles.processingOverlay}>
             <ActivityIndicator color="#ffffff" />
@@ -233,6 +244,17 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  rotateButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.58)',
   },
   readAreaOverlay: {
     ...StyleSheet.absoluteFillObject,

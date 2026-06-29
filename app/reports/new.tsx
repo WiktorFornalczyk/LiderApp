@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -36,6 +36,7 @@ export default function NewReportScreen() {
   const [parsedEntries, setParsedEntries] = useState<ParsedReportEntry[]>([]);
   const [draftEntries, setDraftEntries] = useState<ReportDraftEntry[]>([]);
   const [manualText, setManualText] = useState('');
+  const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
   const filledShifts = shiftNumbers.filter((shiftNumber) => hasEntriesForShift(draftEntries, shiftNumber));
   const missingShifts = shiftNumbers.filter((shiftNumber) => !hasEntriesForShift(draftEntries, shiftNumber));
   const canGenerateReport = missingShifts.length === 0;
@@ -62,7 +63,7 @@ export default function NewReportScreen() {
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1,
-        skipProcessing: false,
+        skipProcessing: true,
       });
       const { rawText: nextRawText } = await recognizeImageText(photo.uri);
       setRawText(nextRawText);
@@ -85,6 +86,10 @@ export default function NewReportScreen() {
   function refreshParsedEntries(nextRawText = rawText) {
     setRawText(nextRawText);
     setParsedEntries(parseReportOcrText(nextRawText));
+  }
+
+  function toggleCameraFacing() {
+    setCameraFacing((current) => (current === 'back' ? 'front' : 'back'));
   }
 
   function addParsedEntriesToDraft() {
@@ -165,7 +170,10 @@ export default function NewReportScreen() {
         <EmptySpacer height={12} />
 
         <View style={styles.cameraFrame}>
-          <CameraView ref={cameraRef} facing="back" style={styles.camera} />
+          <CameraView ref={cameraRef} autofocus="on" facing={cameraFacing} style={styles.camera} />
+          <Pressable disabled={isProcessing} onPress={toggleCameraFacing} style={styles.rotateButton}>
+            <Ionicons name="camera-reverse-outline" size={22} color="#ffffff" />
+          </Pressable>
           {isProcessing ? (
             <View style={styles.processingOverlay}>
               <ActivityIndicator color="#ffffff" />
@@ -507,6 +515,17 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  rotateButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.58)',
   },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -24,19 +24,59 @@ export type OcrRecognitionResult = {
   blocks?: OcrTextBlock[];
 };
 
-export async function recognizeImageText(imageUri: string) {
-  let result: OcrRecognitionResult;
+export type OcrRecognitionMeta = {
+  blockCount: number;
+  lineCount: number;
+  attemptedUriCount: number;
+};
 
-  try {
-    result = await TextRecognition.recognize(imageUri) as OcrRecognitionResult;
-  } catch (error) {
-    throw new Error(error instanceof Error ? getReadableOcrError(error) : 'Nie udalo sie odczytac tekstu ze zdjecia.');
+export async function recognizeImageText(imageUri: string) {
+  let lastError: unknown = null;
+  let firstResult: { rawText: string; result: OcrRecognitionResult; meta: OcrRecognitionMeta } | null = null;
+  const uriCandidates = buildImageUriCandidates(imageUri);
+
+  for (const uri of uriCandidates) {
+    try {
+      const result = await TextRecognition.recognize(uri) as OcrRecognitionResult;
+      const rawText = getFullText(result);
+      const meta = buildOcrMeta(result, uriCandidates.length);
+      firstResult ??= { rawText, result, meta };
+
+      if (rawText) {
+        return {
+          rawText,
+          result,
+          meta,
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  return {
-    rawText: getFullText(result),
-    result,
-  };
+  if (firstResult) {
+    return firstResult;
+  }
+
+  throw new Error(lastError instanceof Error ? getReadableOcrError(lastError) : 'Nie udalo sie odczytac tekstu ze zdjecia.');
+}
+
+function buildImageUriCandidates(imageUri: string) {
+  const candidates = new Set<string>([imageUri]);
+
+  try {
+    candidates.add(decodeURI(imageUri));
+  } catch {
+    // Keep the original URI if decoding fails.
+  }
+
+  if (imageUri.startsWith('file://')) {
+    candidates.add(imageUri.replace('file://', ''));
+  } else if (/^[A-Za-z]:[\\/]/.test(imageUri) || imageUri.startsWith('/')) {
+    candidates.add(`file://${imageUri}`);
+  }
+
+  return Array.from(candidates).filter(Boolean);
 }
 
 export function getReadableOcrError(error: Error) {
@@ -62,4 +102,12 @@ export function getFullText(result: OcrRecognitionResult) {
 
 export function getLines(result: OcrRecognitionResult) {
   return result.blocks?.flatMap((block) => block.lines?.length ? block.lines : [block]) ?? [];
+}
+
+function buildOcrMeta(result: OcrRecognitionResult, attemptedUriCount: number): OcrRecognitionMeta {
+  return {
+    blockCount: result.blocks?.length ?? 0,
+    lineCount: getLines(result).length,
+    attemptedUriCount,
+  };
 }

@@ -97,4 +97,5 @@ export type BbOcrResult = {
   suggestedValues: Partial<BbInput>;
   suggestedPlacName?: string | null;
   error?: string;
+  debugInfo?: string;
 };
