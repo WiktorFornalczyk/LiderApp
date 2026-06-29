@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, usePathname, useRouter } from 'expo-router';
 import { ComponentProps, PropsWithChildren, ReactNode, useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -201,6 +201,7 @@ function buildNotificationItems(todayEvents: CalendarEvent[], upcomingEvents: Ca
 
 function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
   const items: { label: string; icon: LiderIconName; route: string }[] = [
     { label: 'Dashboard', icon: 'home-outline', route: '/(tabs)' },
     { label: 'BB', icon: 'briefcase-outline', route: '/(tabs)/bb' },
@@ -212,7 +213,12 @@ function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
 
   function goTo(route: string) {
     onClose();
-    router.push(route as never);
+
+    if (isCurrentRoute(pathname, route)) {
+      return;
+    }
+
+    router.replace(route as never);
   }
 
   return (
@@ -223,20 +229,39 @@ function MainMenu({ visible, onClose }: { visible: boolean; onClose: () => void 
             <Text style={styles.menuTitle}>Menu</Text>
             <IconButton name="close-outline" onPress={onClose} color={liderColors.text} />
           </View>
-          {items.map((item, index) => (
-            <Pressable
-              key={item.label}
-              onPress={() => goTo(item.route)}
-              style={[styles.menuItem, index > 0 && styles.menuItemBorder]}>
-              <Ionicons name={item.icon} size={20} color={liderColors.text} />
-              <Text style={styles.menuItemText}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color={liderColors.muted} />
-            </Pressable>
-          ))}
+          {items.map((item, index) => {
+            const isActive = isCurrentRoute(pathname, item.route);
+
+            return (
+              <Pressable
+                key={item.label}
+                disabled={isActive}
+                onPress={() => goTo(item.route)}
+                style={[styles.menuItem, index > 0 && styles.menuItemBorder, isActive && styles.menuItemActive]}>
+                <Ionicons name={item.icon} size={20} color={isActive ? liderColors.blue : liderColors.text} />
+                <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>{item.label}</Text>
+                <Ionicons name={isActive ? 'checkmark-outline' : 'chevron-forward'} size={18} color={isActive ? liderColors.blue : liderColors.muted} />
+              </Pressable>
+            );
+          })}
         </Pressable>
       </Pressable>
     </Modal>
   );
+}
+
+function isCurrentRoute(pathname: string, route: string) {
+  const currentPath = normalizeRoutePath(pathname);
+  const targetPath = normalizeRoutePath(route);
+
+  return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+}
+
+function normalizeRoutePath(path: string) {
+  const withoutGroups = path.replace(/\/\([^/]+\)/g, '');
+  const normalized = withoutGroups.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
+
+  return normalized === '/raporty' ? '/reports' : normalized;
 }
 
 export function IconButton({
@@ -480,6 +505,10 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 8,
   },
+  menuItemActive: {
+    backgroundColor: 'rgba(45, 124, 255, 0.12)',
+    borderRadius: 8,
+  },
   menuItemBorder: {
     borderTopWidth: 1,
     borderTopColor: liderColors.borderSoft,
@@ -489,6 +518,9 @@ const styles = StyleSheet.create({
     color: liderColors.text,
     fontSize: 14,
     fontWeight: '800',
+  },
+  menuItemTextActive: {
+    color: liderColors.blue,
   },
   notificationBackdrop: {
     flex: 1,

@@ -23,6 +23,7 @@ import { recognizeImageText } from '@/src/features/ocr/services/textRecognitionS
 type ReportMode = 'start' | 'camera' | 'preview' | 'manual';
 
 const shiftNumbers: ReportShiftNumber[] = [1, 2, 3];
+const emptyReportTemperatures: ReportTemperatures = { 1: '', 2: '', 3: '' };
 
 export default function NewReportScreen() {
   const router = useRouter();
@@ -30,7 +31,6 @@ export default function NewReportScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ReportMode>('start');
   const [selectedShift, setSelectedShift] = useState<ReportShiftNumber>(1);
-  const [temperatures, setTemperatures] = useState<ReportTemperatures>({ 1: '', 2: '', 3: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [rawText, setRawText] = useState('');
   const [parsedEntries, setParsedEntries] = useState<ParsedReportEntry[]>([]);
@@ -131,10 +131,6 @@ export default function NewReportScreen() {
     setMode('start');
   }
 
-  function updateTemperature(shiftNumber: ReportShiftNumber, value: string) {
-    setTemperatures((current) => ({ ...current, [shiftNumber]: value }));
-  }
-
   async function saveReport() {
     if (draftEntries.length === 0) {
       Alert.alert('Brak wpisów', 'Dodaj pozycje raportu ze zdjęcia albo ręcznie.');
@@ -147,7 +143,7 @@ export default function NewReportScreen() {
     }
 
     try {
-      const formattedReport = await buildFormattedReport(draftEntries, temperatures);
+      const formattedReport = await buildFormattedReport(draftEntries, emptyReportTemperatures);
       const sourceEntries = draftEntries.map((entry) => `Zmiana ${entry.shiftNumber}: ${formatParsedEntryForReport(entry.parsedEntry)}`);
       await reportRepository.createReport(formattedReport, sourceEntries);
       Alert.alert('Raport zapisany', 'Wygenerowano raport z OCR i podsumowaniem godzin z grafiku.');
@@ -306,25 +302,6 @@ export default function NewReportScreen() {
 
       <EmptySpacer height={18} />
 
-      <SectionTitle>Temperatura domyślna</SectionTitle>
-      <Card style={styles.temperatureCard}>
-        {shiftNumbers.map((shiftNumber) => (
-          <View key={shiftNumber} style={styles.temperatureRow}>
-            <Text style={styles.temperatureLabel}>Zmiana {shiftNumber}</Text>
-            <TextInput
-              keyboardType="numbers-and-punctuation"
-              onChangeText={(value) => updateTemperature(shiftNumber, value)}
-              placeholder="Gdy OCR nie odczyta temperatur"
-              placeholderTextColor={liderColors.dim}
-              style={styles.temperatureInput}
-              value={temperatures[shiftNumber]}
-            />
-          </View>
-        ))}
-      </Card>
-
-      <EmptySpacer height={18} />
-
       <Card style={styles.infoCard}>
         <Text style={styles.infoTitle}>Format raportu</Text>
         <Text style={styles.infoText}>
@@ -462,33 +439,6 @@ const styles = StyleSheet.create({
   },
   shiftButtonTextActive: {
     color: liderColors.blue,
-  },
-  temperatureCard: {
-    gap: 10,
-    padding: 12,
-  },
-  temperatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  temperatureLabel: {
-    width: 78,
-    color: liderColors.text,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  temperatureInput: {
-    flex: 1,
-    minHeight: 42,
-    borderWidth: 1,
-    borderColor: liderColors.borderSoft,
-    borderRadius: 8,
-    backgroundColor: liderColors.surfaceSoft,
-    color: liderColors.text,
-    paddingHorizontal: 12,
-    fontSize: 13,
-    fontWeight: '800',
   },
   infoCard: {
     gap: 8,
