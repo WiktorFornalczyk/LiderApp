@@ -48,7 +48,7 @@ export function BbForm({
     for (const value of values) {
       const normalized = value.trim().toUpperCase();
 
-      if (normalized) {
+      if (normalized && normalized !== '330') {
         normalizedValues.set(normalized, normalized);
       }
     }

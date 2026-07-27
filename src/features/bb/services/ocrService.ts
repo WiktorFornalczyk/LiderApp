@@ -7,65 +7,50 @@ import {
   recognizeImageText,
 } from '@/src/features/ocr/services/textRecognitionService';
 import { BbInput, BbLine, BbOcrResult } from '../types/bbTypes';
+import {
+  buildSuggestedBbInput,
+  normalizeOcrText,
+  parseBatchNumber,
+  parseBbOcrText,
+  parseGrade,
+  parseProductionLine,
+  parseRange,
+  parseYardName,
+} from './bbOcrParser';
 
 type RecognizeBbPhotoOptions = {
   maxTextY?: number;
 };
 
-const commonCarbonGrades = ['330', '339', '326', '375'];
-
 export function extractBatchNumberFromText(text: string) {
-  const normalized = text.replace(/\s+/g, ' ');
-  const prefixedMatch = normalized.match(/\bP\s*([0-9]{4,})\b/i);
-
-  if (prefixedMatch?.[1]) {
-    return prefixedMatch[1];
-  }
-
-  const labelledMatch = normalized.match(/(?:partia|nr\s*partii|batch)[:\s-]*(\d{4,})/i);
-
-  if (labelledMatch?.[1]) {
-    return labelledMatch[1];
-  }
-
-  return normalized.match(/\b\d{6,}\b/)?.[0] ?? null;
+  return parseBatchNumber(text);
 }
 
 export function extractCarbonTypeFromText(text: string) {
-  const normalized = text.replace(/\s+/g, ' ');
-  const match = normalized.match(/\bN\s*([A-Z]?\d{2,}[A-Z0-9]*)\b/i);
-
-  if (match?.[1]) {
-    return `N${match[1].toUpperCase()}`;
-  }
-
-  const commonGrade = commonCarbonGrades.find((grade) => new RegExp(`(^|\\D)${grade}(\\D|$)`).test(normalized));
-
-  return commonGrade ? `N${commonGrade}` : null;
+  return parseGrade(text);
 }
 
 export function extractBbRangeFromText(text: string) {
-  const normalized = text.replace(/\s+/g, ' ');
-  const match = normalized.match(/BB\s*0*(\d{1,3})\s*(?:-|–|—|do)\s*0*(\d{1,3})/i);
+  const range = parseRange(text);
 
-  if (!match?.[1] || !match?.[2]) {
+  if (!range) {
     return null;
   }
 
   return {
-    bbOd: match[1],
-    bbDo: match[2],
+    bbOd: range.from,
+    bbDo: range.to,
   };
 }
 
 export function extractLineFromText(text: string): BbLine | null {
-  const normalized = text.toUpperCase();
+  const line = parseProductionLine(text);
 
-  if (/\bL[\s-]?II\b/.test(normalized)) {
+  if (line === 'II') {
     return 'L-II';
   }
 
-  if (/\bL[\s-]?I\b/.test(normalized)) {
+  if (line === 'I') {
     return 'L-I';
   }
 
@@ -73,24 +58,11 @@ export function extractLineFromText(text: string): BbLine | null {
 }
 
 export function extractYardNameFromText(text: string) {
-  const normalized = text.replace(/\s+/g, ' ');
-  const match = normalized.match(/\bplac\s*([0-9A-ZĄĆĘŁŃÓŚŹŻ-]+)\b/i);
-
-  return match?.[1] ? `Plac ${match[1].toUpperCase()}` : null;
+  return parseYardName(text);
 }
 
 export function buildSuggestedBbValues(rawText: string): Partial<BbInput> {
-  const nrPartii = extractBatchNumberFromText(rawText);
-  const rodzajSadzy = extractCarbonTypeFromText(rawText);
-  const range = extractBbRangeFromText(rawText);
-  const linia = extractLineFromText(rawText);
-
-  return {
-    ...(nrPartii ? { nrPartii } : {}),
-    ...(rodzajSadzy ? { rodzajSadzy } : {}),
-    ...(range ? range : {}),
-    ...(linia ? { linia } : {}),
-  };
+  return buildSuggestedBbInput(parseBbOcrText(rawText));
 }
 
 export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPhotoOptions = {}): Promise<BbOcrResult> {
@@ -109,6 +81,7 @@ export async function recognizeBbPhoto(imageUri: string, options: RecognizeBbPho
     return {
       imageUri,
       rawText: '',
+      normalizedText: '',
       suggestedNrPartii: null,
       suggestedValues: {},
       suggestedPlacName: null,
@@ -164,14 +137,15 @@ function hasSuggestedValues(result: BbOcrResult) {
 }
 
 export function buildOcrResultFromText(rawText: string, imageUri: string | null = null): BbOcrResult {
-  const suggestedValues = buildSuggestedBbValues(rawText);
-  const suggestedPlacName = extractYardNameFromText(rawText);
+  const parsedText = parseBbOcrText(rawText);
+  const suggestedValues = buildSuggestedBbInput(parsedText);
 
   return {
     imageUri,
     rawText,
+    normalizedText: normalizeOcrText(rawText),
     suggestedNrPartii: suggestedValues.nrPartii ?? null,
     suggestedValues,
-    suggestedPlacName,
+    suggestedPlacName: parsedText.yardName,
   };
 }

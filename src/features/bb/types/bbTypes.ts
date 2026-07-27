@@ -93,6 +93,7 @@ export type BbImportSummary = {
 export type BbOcrResult = {
   imageUri: string | null;
   rawText: string;
+  normalizedText?: string;
   suggestedNrPartii: string | null;
   suggestedValues: Partial<BbInput>;
   suggestedPlacName?: string | null;

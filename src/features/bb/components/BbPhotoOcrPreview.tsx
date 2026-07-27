@@ -34,6 +34,10 @@ export function BbPhotoOcrPreview({
   onPlacNameChange: (value: string) => void;
   onConfirm: () => void;
 }) {
+  const normalizedText = result.normalizedText?.trim();
+  const rawText = result.rawText.trim();
+  const shouldShowNormalizedText = Boolean(normalizedText && normalizedText !== rawText);
+
   return (
     <Card style={styles.card}>
       {result.imageUri ? <Image source={{ uri: result.imageUri }} style={styles.image} /> : null}
@@ -42,6 +46,13 @@ export function BbPhotoOcrPreview({
       <Text style={styles.rawText}>
         {result.error ? `OCR nie odczytał tekstu: ${result.error}` : result.rawText || 'Brak odczytanego tekstu.'}
       </Text>
+
+      {shouldShowNormalizedText ? (
+        <>
+          <Text style={styles.label}>Po normalizacji</Text>
+          <Text style={styles.rawText}>{normalizedText}</Text>
+        </>
+      ) : null}
 
       <Text style={styles.label}>Proponowane wartości</Text>
       <TextInput

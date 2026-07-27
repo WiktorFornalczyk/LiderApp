@@ -37,7 +37,6 @@ export function BbPhotoAddScreen({
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1,
-        skipProcessing: true,
       });
 
       const nextResult = await ocrService.recognizeBbPhoto(photo.uri, {
@@ -146,7 +145,7 @@ export function BbPhotoAddScreen({
       </Card>
 
       <View style={styles.cameraFrame}>
-        <CameraView ref={cameraRef} autofocus="on" facing={cameraFacing} style={styles.camera} />
+        <CameraView ref={cameraRef} autofocus="on" facing={cameraFacing} flash="off" style={styles.camera} />
         <View pointerEvents="none" style={styles.readAreaOverlay}>
           <View style={styles.readAreaShade} />
           <View style={styles.guideLineWrap}>
